@@ -344,6 +344,8 @@ function groupUnits(g,sid,m){
   const f=unitFactor(m==='FIX'?'VIC23':m,+g.lw,!!g.lact);return{u:head*f.v,head,flags:f.flag?[`${g.name}: ${f.flag}`]:[]}}
 function facS1(f,sid,m,usersSCU){
   if(m==='VIC23'||m==='FIX'){const t=VIC_S1.find(t=>t.k===f.vicType)||VIC_S1[0];return{v:t.v,flag:null}}
+  if((m==='NAT'||m==='W02')&&!(+f.area>0)){const tab=m==='NAT'?NAT_S1[P.project.rainfall==='lt750'?'lt750':'gt750']:null;const row=m==='W02'?((W02_S1[f.w02Pad]||W02_S1.Enclosed)[f.w02Clean]||Object.values(W02_S1[f.w02Pad]||W02_S1.Enclosed)[0]):null;
+    return{v:m==='NAT'?tab[0][1]:row[0],dens:0,flag:`${f.name}: no area entered — ${m==='NAT'?'National':'Vic 2002'} S1 held at the densest table value (worst case). Enter the pen area for a real value.`}}
   if(m==='NAT'){const dens=usersSCU>0?(+f.area||0)/usersSCU:0;const tab=NAT_S1[P.project.rainfall==='lt750'?'lt750':'gt750'];const r=interp(tab,dens);
     return{v:r.v,dens,flag:r.flag==='below'?`${f.name}: ${fmt(dens,1)} m²/SCU is denser than the published S1 table (starts ${tab[0][0]} m²) — S1 held at ${tab[0][1]}, real value likely higher`:(r.flag==='above'?`${f.name}: ${fmt(dens,1)} m²/SCU lighter than table — S1 held at 40`:null)}}
   if(m==='W02'){const dens=usersSCU>0?(+f.area||0)/usersSCU:0;const row=(W02_S1[f.w02Pad]||W02_S1.Enclosed)[f.w02Clean]||Object.values(W02_S1[f.w02Pad]||W02_S1.Enclosed)[0];
@@ -429,7 +431,8 @@ function gateResult(){const g=P.project.gate||{};if(P.project.gateOverride)retur
   if(!g.grazing||!g.supp||!g.sustain)return'';return(g.grazing==='yes'&&g.supp==='yes'&&g.sustain==='yes')?'grazing':'intensive'}
 function triggers(sid){const st=P.project.state;const heads=P.groups.filter(g=>!g.calc).reduce((s,g)=>s+(+(g.heads?.[sid]||0)),0);
   const allHead=P.groups.reduce((s,g)=>s+(+(g.heads?.[sid]||0)),0);const scu=P.sites.reduce((s,x)=>s+siteCalc(x.id,sid,'NAT').N,0);const t=[];
-  if(st==='VIC'){t.push(allHead>5000?['EPA licence (B01a) — over 5,000 head','warn']:allHead>1000?['Planning permit — over 1,000 head','warn']:['Up to 1,000 head — lodge with council','na'])}
+  if(st==='VIC'&&gateResult()==='grazing'){t.push(['Grazing animal production — no use permit under Clause 53.AA; new buildings (e.g. calf shed) still check Farming Zone buildings-and-works setbacks','na'])}
+  else if(st==='VIC'){t.push(allHead>5000?['EPA licence (B01a) — over 5,000 head','warn']:allHead>1000?['Planning permit — over 1,000 head','warn']:['Up to 1,000 head — lodge with council','na'])}
   if(st==='NSW'){t.push(heads>800?['Designated development: EIS, SEARs, EPA licence — over 800 head','warn']:heads>50?['Development application with statement of environmental effects — over 50 cows','warn']:['Under 50 cows','na'])}
   if(st==='QLD')t.push(scu>150?['Development permit and environmental authority — over 150 SCU','warn']:['150 SCU or less — may be self-assessable','na']);
   if(st==='SA')t.push(heads>500?['EPA licence and development approval — over 500 cows a day','warn']:heads>200?['EPA licence if in a water protection area — over 200 cows a day','warn']:['Under 200 cows a day','na']);
@@ -689,11 +692,12 @@ function recCard(r,i,sites){const m=METHOD;const isF=r.kind==='feat';const o=r.o
     <div class="grid">${fld('Neighbour property area (ha) — for the 50% test',num(`receptors.${i}.propArea`,r.propArea,1))}${fld('Area inside buffer (ha)',num(`receptors.${i}.bufArea`,r.bufArea,1))}${fld('Distance from effluent reuse area (m)',num(`receptors.${i}.reuseDist`,r.reuseDist,10))}</div>
    </div></details>`}
    ${fld('Notes',txt(`receptors.${i}.notes`,r.notes,'rno-'+r.id))}</div>`}
-function cellHTML(x,r){if(x.status==='na'&&!x.gov)return'<span class="hint">—</span>';
-  const S=x.f?`S ${fmt(x.f.S,1)} · `:'';return`<div class="cell">${pill(x.status)}<span class="s">${S}needs ${fmt(x.gov)} m${x.margin!=null&&x.status!=='same'?` · ${x.margin>=0?'+':''}${fmt(x.margin)}`:''}</span>${x.govRule&&x.govRule!=='formula'?`<span class="s" title="${esc(x.govRule)}">min rule</span>`:''}${x.tier===1?'<span class="s">Tier 1 only</span>':''}${x.cum?`<span class="s">${x.cum==='combined'?'sites combined':'+20% two sites'}</span>`:''}</div>`}
+function cellHTML(x,r,showD){if(x.status==='na'&&!x.gov)return'<span class="hint">—</span>';
+  const S=x.f?`S ${fmt(x.f.S,1)} · `:'';return`<div class="cell">${pill(x.status)}${showD&&x.known?`<span class="s"><strong>at ${fmt(x.dist)} m</strong></span>`:''}<span class="s">${S}needs ${fmt(x.gov)} m${x.margin!=null&&x.status!=='same'?` · ${x.margin>=0?'+':''}${fmt(x.margin)}`:''}</span>${x.govRule&&x.govRule!=='formula'?`<span class="s" title="${esc(x.govRule)}">min rule</span>`:''}${x.tier===1?'<span class="s">Tier 1 only</span>':''}${x.cum?`<span class="s">${x.cum==='combined'?'sites combined':'+20% two sites'}</span>`:''}</div>`}
 function matrix(m){if(!P.receptors.length)return'<div class="hint">Add receptors to see results.</div>';
   return`<div class="tw"><table><thead><tr><th>Receptor</th><th>Distance</th>${P.stages.map(s=>`<th>${esc(s.name)} · ${fmt(stageSummary(s.id,m).heads)} hd</th>`).join('')}</tr></thead><tbody>
-  ${P.receptors.map(r=>`<tr><td><strong>${esc(r.name)}</strong><div class="hint">${esc((r.kind==='feat'?FCLASS:RCLASS).find(c=>c.k===r.cls)?.l||'')}${dirOf(r,P.sites[0].id,P.stages.at(-1).id)!=null?' · '+DIRS[dirOf(r,P.sites[0].id,P.stages.at(-1).id)]:''}</div></td><td class="num">${P.sites.map(s=>fmt(distOf(r,s.id,P.stages.at(-1).id))).join(' / ')} m${fromMap(r,P.sites[0].id,P.stages.at(-1).id)?'<div class="hint">from map</div>':''}</td>${P.stages.map(s=>`<td>${cellHTML(resultFor(r,s.id,m),r)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
+  ${P.receptors.map(r=>{const xs=P.stages.map(s=>resultFor(r,s.id,m));const ds=[...new Set(xs.filter(x=>x.known).map(x=>Math.round(x.dist)))];const moved=ds.length>1;
+   return`<tr><td><strong>${esc(r.name)}</strong><div class="hint">${esc((r.kind==='feat'?FCLASS:RCLASS).find(c=>c.k===r.cls)?.l||'')}${dirOf(r,P.sites[0].id,P.stages.at(-1).id)!=null?' · '+DIRS[dirOf(r,P.sites[0].id,P.stages.at(-1).id)]:''}</div></td><td class="num">${moved?`${fmt(Math.min(...ds))}–${fmt(Math.max(...ds))} m<div class="hint">boundary changes by stage</div>`:`${P.sites.map(s=>fmt(distOf(r,s.id,P.stages.at(-1).id))).join(' / ')} m`}${fromMap(r,P.sites[0].id,P.stages.at(-1).id)?'<div class="hint">from map</div>':''}</td>${xs.map(x=>`<td>${cellHTML(x,r,moved)}</td>`).join('')}</tr>`}).join('')}</tbody></table></div>`}
 function stageCard(s,m){const ss=stageSummary(s.id,m);const tr=triggers(s.id);const st=P.project.state;
   const sitesInfo=P.sites.map(si=>{const c=siteCalc(si.id,s.id,m);return`${P.sites.length>1?esc(si.name)+': ':''}${fmt(c.heads)} head · ${fmt(c.N,1)} ${LIB[m].unit} · S1 ${fmt(c.S1,2)}`}).join('<br>');
   const checks=[];
@@ -759,7 +763,7 @@ function compareTable(){const all=[{k:'base',name:'Base project',data:DOC.base},
 function reportHTML(){const p=P.project,m=METHOD,g=gateResult();
   return`<section class="card report"><div class="row noprint"><button class="btn" data-act="print">Print or save as PDF</button><button class="btn ghost" data-act="copySummary">Copy summary text</button><span class="hint">Printing works in the offline copy of the tool (Save / load), not inside the Claude viewer.</span></div>
   <h1>Odour separation assessment — ${esc(p.name)}</h1>
-  <p class="hint">${esc(p.client)} · ${esc(p.address)} · ${esc(p.state)} · ${esc(p.council)} · Assessor ${esc(p.assessor)} · ${esc(p.date)}${P.example?' · EXAMPLE DATA':''}</p>
+  <p class="hint">${[p.client,p.address,p.state,p.council,p.assessor&&'Assessor '+p.assessor,p.date].filter(v=>v&&String(v).trim()).map(esc).join(' · ')}${P.example?' · EXAMPLE DATA':''}</p>
   <h2>Summary</h2>
   <p>Classification: <strong>${g==='grazing'?'grazing animal production (risk check only)':g==='intensive'?'intensive dairy':'not set'}</strong>. Method: <strong>${esc(LIB[m].name)}</strong> — ${esc(LIB[m].status)}. S1 weighting: ${P.settings.mode==='time'?'time-weighted':'conservative'}.</p>
   <div class="tw"><table><thead><tr><th>Stage</th><th>Head</th><th>Result</th><th>Governing receptor</th><th>Margin</th><th>Herd ceiling</th>${p.state==='VIC'?'<th>Notice exempt</th>':''}</tr></thead><tbody>
@@ -883,14 +887,14 @@ function afterChange(full){save();if(full)render();else renderLive()}
 document.addEventListener('input',e=>{const el=e.target;
   if(el.dataset.ls){try{localStorage.setItem(el.dataset.ls,el.value.trim())}catch(_){}return}
   if(el.dataset.k){if(el.dataset.k==='__scenname'){const s=DOC.scenarios.find(s=>s.id===DOC.active);if(s)s.name=el.value;save();return}
-    setPath(P,el.dataset.k,coerce(el.dataset.t,el.value));if(P.example&&/^project\.(name|client)$/.test(el.dataset.k)){P.example=false;render();return}calfCache.clear();afterChange(false);return}
+    setPath(P,el.dataset.k,coerce(el.dataset.t,el.value));if(P.example){P.example=false;if(/^Example data to show how the tool works/.test(P.project.notes||''))P.project.notes='';render();save();return}calfCache.clear();afterChange(false);return}
   if(el.dataset.alloc!=null){const g=P.groups[+el.dataset.alloc];g.alloc=g.alloc||[];const fid=el.dataset.fid;const a=g.alloc.find(a=>a.fid===fid);const v=+el.value||0;if(a)a.hrs=v;else g.alloc.push({fid,hrs:v});afterChange(false);return}
   if(el.dataset.wm){WIND_IMPORT[el.dataset.wm]=el.dataset.wm==='offset'?el.value:+el.value}});
 document.addEventListener('change',e=>{const el=e.target;if(el.dataset.ls){render();return}if(el.dataset.k||el.dataset.alloc!=null){render()}if(el.dataset.wm&&el.dataset.wm!=='offset'){WIND_IMPORT[el.dataset.wm]=+el.value}});
 document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;
   if(b.dataset.view){VIEW=b.dataset.view;CONFIRM=null;render();window.scrollTo(0,0);return}
   if(b.dataset.step){const k=b.dataset.step;const cur=+getPath(P,k)||0;setPath(P,k,Math.max(0,Math.round((cur+(+b.dataset.d))*100)/100));calfCache.clear();save();const inp=document.querySelector(`[data-k="${k}"]`);if(inp)inp.value=getPath(P,k);if(k.includes('calc')||k.startsWith('own')||k.startsWith('project.fixed'))render();else renderLive();return}
-  if(b.dataset.chip){const k=b.dataset.chip;let v=b.dataset.v;
+  if(b.dataset.chip){const k=b.dataset.chip;let v=b.dataset.v;if(P.example&&!k.startsWith('__')){P.example=false;if(/^Example data to show how the tool works/.test(P.project.notes||''))P.project.notes=''}
     if(k==='__method'){METHOD=v;render();return}if(k==='__mt'){MAP_TARGET=MAP_TARGET===v?null:v;DRAW=null;render();return}if(k==='__gi'){GEO_IMPORT.mode=v;render();return}if(k==='__gz'){GEO_IMPORT.zone=v;render();return}if(k==='__stage'){STAGE_SEL=v;render();return}
     if(k==='__scen'){DOC.active=v;bindActive();save();render();return}
     if(k.startsWith('__wm.')){WIND_IMPORT[k.slice(5)]=v;render();return}
