@@ -86,6 +86,7 @@ tr:last-child td{border-bottom:0}
 .cell .pill{align-self:flex-start}
 .cell .s{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .rcard{border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:10px;background:var(--panel)}
+.rcard.fail{border-color:var(--fail);box-shadow:inset 4px 0 0 var(--fail)}.rstat{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px;align-items:center}.rstat .s{color:var(--muted)}.deftab td,.deftab th{font-size:12.5px}.defin{width:90px;text-align:right}
 .rcard .top{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:8px}
 details summary{cursor:pointer;color:var(--accent);font-size:13px}
 .flag{font-size:12px;color:var(--warn)}
@@ -142,14 +143,14 @@ details summary{cursor:pointer;color:var(--accent);font-size:13px}
 /* ================= METHOD LIBRARY (data, not code) ================= */
 const DIRS=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
 const LIB={
-  VIC23:{id:'VIC23',name:'Vic 2023 multi-species',ver:'DEECA Animal production separation distance requirements, draft May 2023',status:'Consultation draft — not gazetted',unit:'SDCU'},
+  VIC23:{id:'VIC23',name:'Vic 2023 multi-species',ver:'DEECA Animal production separation distance requirements, draft May 2023',get status(){return 'Proposed — consultation draft, awaiting gazettal'},unit:'SDCU'},
   NAT:{id:'NAT',name:'National S-factor',ver:'National Guidelines for Beef Cattle Feedlots in Australia, 3rd ed. 2012 (NSW EPA Technical Notes 2006 same structure)',status:'Current',unit:'SCU'},
-  W02:{id:'W02',name:'Vic 2002 Wrigley & Dillon',ver:'Dairy Cattle Feedpad Guidelines, Goulburn Broken Catchment, 2002 — tables transcribed from Peter Best workbooks, appendices not sighted',status:'Comparison — unverified transcription',unit:'DCU'},
+  W02:{id:'W02',name:'Vic 2002 Wrigley & Dillon',ver:'Dairy Cattle Feedpad Guidelines, Goulburn Broken Catchment, 2002 — tables transcribed from Peter Best workbooks, appendices not sighted',get status(){return DEF.vicBasis==='current'?'Current Vic method':'Previous Vic method — comparison'},unit:'DCU'},
   FIX:{id:'FIX',name:'Fixed buffer (council / attenuation)',ver:'User-entered council policy or planning scheme attenuation distance',status:'Per project',unit:'—'}
 };
 const FKIND=[{k:'feedpad',l:'Feedpad'},{k:'dairy',l:'Dairy and holding yard'},{k:'barn',l:'Barn or freestall'},{k:'calf',l:'Calf shed'},{k:'other',l:'Other'}];
 const STATES=[['VIC','Vic'],['NSW','NSW'],['SA','SA'],['QLD','Qld'],['WA','WA'],['TAS','Tas'],['NT','NT'],['ACT','ACT']];
-function methodsFor(st){ if(st==='VIC')return['VIC23','W02','NAT']; if(st==='WA'||st==='TAS')return['FIX','NAT']; return['NAT']; }
+function methodsFor(st){ if(st==='VIC')return DEF.vicBasis==='current'?['W02','VIC23','NAT']:['VIC23','W02','NAT']; if(st==='WA'||st==='TAS')return['FIX','NAT']; return['NAT']; }
 
 // Vic 2023 Table 19 — SDCU by liveweight band [upper kg, dry, lactating]
 const SDCU=[[50,.131,null],[75,.177,null],[100,.220,null],[125,.260,null],[150,.298,null],[175,.335,null],[200,.370,null],[225,.404,null],[250,.437,null],[275,.470,null],[300,.501,null],[325,.532,.612],[350,.563,.647],[375,.593,.682],[400,.622,.716],[425,.651,.749],[450,.680,.782],[475,.708,.814],[500,.736,.846],[525,.763,.877],[550,.790,.909],[575,.817,.939],[600,.843,.970],[625,.870,1.000],[650,.896,1.030],[675,.921,1.059],[700,.947,1.089],[725,.972,1.118],[750,.997,1.147],[Infinity,1.022,1.175]];
@@ -193,11 +194,11 @@ const RCLASS=[
   {k:'pubhigh',l:'High-use public area',vic:20,nat:0.3,w02:3,t1:250},
   {k:'publow',l:'Low-use public area',vic:20,nat:0.05,w02:0.1,t1:250}];
 const FCLASS=[
-  {k:'waterway',l:'Waterway',min:100,rule:'Clause 53.AA AM4.1 — 100 m from a waterway'},
-  {k:'drain',l:'Surface drain',min:60,rule:'Clause 53.AA AM4.1 — 60 m from a surface drain'},
-  {k:'potable',l:'Potable water storage',min:800,rule:'Clause 53.AA AM4.2 — 800 m from a potable water storage'},
-  {k:'bore',l:'Farm bore or spear point',min:200,rule:'2010 Vic feedpad guidelines — pond 200 m from farm bore'},
-  {k:'channel',l:'Irrigation channel or drain',min:60,rule:'2010 Vic feedpad guidelines — pond 60 m from channel or drain'}];
+  {k:'waterway',l:'Waterway',get min(){return DEF.feat.waterway},get rule(){return`Clause 53.AA AM4.1 — ${DEF.feat.waterway} m from a waterway`}},
+  {k:'drain',l:'Surface drain',get min(){return DEF.feat.drain},get rule(){return`Clause 53.AA AM4.1 — ${DEF.feat.drain} m from a surface drain`}},
+  {k:'potable',l:'Potable water storage',get min(){return DEF.feat.potable},get rule(){return`Clause 53.AA AM4.2 — ${DEF.feat.potable} m from a potable water storage`}},
+  {k:'bore',l:'Farm bore or spear point',get min(){return DEF.feat.bore},get rule(){return`2010 Vic feedpad guidelines — pond ${DEF.feat.bore} m from a farm bore`}},
+  {k:'channel',l:'Irrigation channel or drain',get min(){return DEF.feat.channel},get rule(){return`2010 Vic feedpad guidelines — pond ${DEF.feat.channel} m from a channel or drain`}}];
 const TERRAIN=[
   {k:'flat',l:'Flat (under 2% slope)',vic:1.0,nat:1.0,w02:1.0},
   {k:'undul',l:'Undulating, low relief between',vic:1.0,nat:0.9,w02:1.0},
@@ -217,6 +218,16 @@ const VEG=[
   {k:'forest',l:'Forest with mid and lower storey',vic:0.77,nat:0.5,w02:0.7},
   {k:'hillsval',l:'Significant hills and valleys between',vic:0.68,nat:1.0,w02:1.0}];
 const NAT_S5=[{k:'high',l:'High frequency toward receptor',v:1.5},{k:'normal',l:'Normal',v:1.0},{k:'low',l:'Low frequency (under 5%)',v:0.7}];
+
+/* ================= DEFAULTS (per device, exportable JSON) ================= */
+const DEF_PUBLISHED={v:1,vicBasis:'proposed',vicS5Default:1.2,tier1SDCU:90,t1:{sens:250,rural:500,town:750},
+  feedpadMin:300,pondMin:300,grazingFeedpadMin:100,feat:{waterway:100,drain:60,potable:800,bore:200,channel:60},nswRural:200,
+  trig:{vicPermit:1000,vicEPA:5000,nswDA:50,nswDesig:800,qldSCU:150,saWPA:200,saEPA:500},risk:{mod:5,high:10}};
+let DEF=JSON.parse(JSON.stringify(DEF_PUBLISHED)),DEF_PENDING=null,DEF_STATE=null;
+function mergeDef(base,over){const o=JSON.parse(JSON.stringify(base));for(const k in over){if(over[k]&&typeof over[k]==='object'&&!Array.isArray(over[k])&&o[k]&&typeof o[k]==='object')o[k]=mergeDef(o[k],over[k]);else if(k in o)o[k]=over[k]}return o}
+try{const d=localStorage.getItem('sfactor-defaults');if(d)DEF=mergeDef(DEF_PUBLISHED,JSON.parse(d))}catch(e){}
+function saveDef(){try{localStorage.setItem('sfactor-defaults',JSON.stringify(DEF))}catch(e){}}
+const sameDef=(a,b)=>JSON.stringify(mergeDef(DEF_PUBLISHED,a||{}))===JSON.stringify(mergeDef(DEF_PUBLISHED,b||{}));
 
 /* ================= HELPERS ================= */
 const $=s=>document.querySelector(s);
@@ -242,18 +253,16 @@ function unitFactor(m,lw,lact){
 
 /* ================= CALF OCCUPANCY ================= */
 const calfCache=new Map();
-function calfSim(c,calvings){
-  const key=JSON.stringify([c,calvings]);if(calfCache.has(key))return calfCache.get(key);
-  const bd=Math.max(1,c.blockWeeks*7),perDay=calvings*(c.reared/100)/bd,days=Math.max(1,Math.round(c.daysIn));
-  const starts=[];for(let s=0;s<365*4;s+=Math.max(1,c.intervalDays))starts.push(s);
-  const res={head:[],VIC23:[],NAT:[],W02:[]};
-  const uf={};['VIC23','NAT','W02'].forEach(m=>{uf[m]=[];for(let a=0;a<days;a++){const lw=c.birthKg+(c.exitKg-c.birthKg)*a/days;uf[m].push(unitFactor(m,lw,false).v)}});
-  for(let t=730;t<1095;t++){let h=0,u={VIC23:0,NAT:0,W02:0};
-    for(let a=0;a<days;a++){const born=t-a;if(starts.some(s=>born>=s&&born<s+bd)){h+=perDay;for(const m in u)u[m]+=perDay*uf[m][a]}}
-    res.head.push(h);for(const m in u)res[m].push(u[m]);}
-  const out={peakHead:Math.max(...res.head),peak:{VIC23:Math.max(...res.VIC23),NAT:Math.max(...res.NAT),W02:Math.max(...res.W02)},emptyDays:res.head.filter(h=>h<0.01).length,series:res};
-  calfCache.set(key,out);return out;
+const CALF_PLAN={calvings:0,blocks:3,blockWeeks:6,intervalDays:122,reared:100,daysIn:91};
+function calfSim(c,bk,ek){ // calving pattern → calves on hand each day of a settled year (+ peak units by age when weights given)
+  const key=JSON.stringify([c,bk,ek]);if(calfCache.has(key))return calfCache.get(key);
+  const bd=Math.max(1,(+c.blockWeeks||0)*7),perDay=(+c.calvings||0)*((+c.reared||0)/100)/bd,days=Math.max(1,Math.round(+c.daysIn||1)),nb=Math.max(1,Math.round(+c.blocks||1)),iv=Math.max(1,+c.intervalDays||365);
+  const starts=[];for(let y=0;y<5;y++)for(let k=0;k<nb;k++)starts.push(y*365+k*iv);
+  const ms=bk?['VIC23','NAT','W02']:[];const uf={};ms.forEach(m=>{uf[m]=[];for(let a=0;a<days;a++)uf[m].push(unitFactor(m,+bk+((+ek||+bk)-(+bk))*(a+.5)/days,false).v)});
+  const head=[],pk={VIC23:0,NAT:0,W02:0};for(let t=730;t<1095;t++){let h=0;const u={VIC23:0,NAT:0,W02:0};for(let a=0;a<days;a++){const born=t-a;if(starts.some(s=>born>=s&&born<s+bd)){h+=perDay;ms.forEach(m=>u[m]+=perDay*uf[m][a])}}head.push(h);ms.forEach(m=>{if(u[m]>pk[m])pk[m]=u[m]})}
+  const ph=Math.max(...head);const out={peakHead:ph,peakUnits:pk,perCalf:Object.fromEntries(ms.map(m=>[m,ph?pk[m]/ph:0])),emptyDays:head.filter(h=>h<0.01).length,series:{head}};calfCache.set(key,out);return out;
 }
+function calfUF(m,b,e){m=m==='FIX'?'VIC23':m;b=+b||40;e=+e||b;let s=0;const n=24;for(let k=0;k<n;k++)s+=unitFactor(m,b+(e-b)*(k+.5)/n,false).v;return s/n} // calves of every age in the shed at once
 
 /* ================= WIND ================= */
 const BIN=(deg,sp,tod)=>((Math.floor(deg)%360)*9+sp*3+tod);
@@ -277,55 +286,36 @@ function exposure(w,bearingIdx){ // wind blowing toward receptor comes FROM the 
 function natClassFromWind(w,bi){const e=exposure(w,bi);if(!e)return null;return e.pct40>=60?'high':(e.pct40<5?'low':'normal')}
 
 /* ================= DEFAULT / EXAMPLE PROJECT ================= */
-function blankProject(){return{fmt:1,toolVersion:'1.0',example:false,
+function blankProject(){return{fmt:1,toolVersion:'1.1',
   project:{name:'New project',client:'',address:'',state:'VIC',council:'',rainfall:'gt750',assessor:'',date:today(),notes:'',gate:{grazing:'',supp:'',sustain:''},gateOverride:'',fixed:{dwelling:0,rural:0,town:0}},
   stages:[{id:'s1',name:'Stage 1'}],sites:[{id:'A',name:'Main complex',hasPond:true}],siteGap:'',
   facilities:[],groups:[],receptors:[],own:{A:{}},wind:{source:'none',label:'',hours:0,calm:0,bins:null,manual16:Array(16).fill(0)},
   settings:{mode:'cons',risk:{mod:5,high:10},vicS5Default:1.2},geo:{bnd:{},title:null,parcels:[],view:null}}}
-function exampleProject(){const p=blankProject();Object.assign(p,{example:true});
-  p.project=Object.assign(p.project,{name:'Example — staged barn build',client:'Example data only',state:'VIC',rainfall:'gt750',assessor:'Peter Best',notes:'Example data to show how the tool works. Replace with real project data.',gate:{grazing:'no',supp:'no',sustain:'no'}});
-  p.stages=[{id:'s1',name:'Stage 1'},{id:'s2',name:'Stage 2'},{id:'s3',name:'Stage 3'}];
-  p.facilities=[
-    {id:'f1',name:'Barn 1 — freestall',site:'A',built:'s1',retired:'',vicType:'shed_pond_gt25',area:7200,w02Pad:'Enclosed',w02Clean:'Flood Washed Daily'},
-    {id:'f2',name:'Barn 2 — freestall',site:'A',built:'s2',retired:'',vicType:'shed_pond_gt25',area:7200,w02Pad:'Enclosed',w02Clean:'Flood Washed Daily'},
-    {id:'f3',name:'Barn 3 — freestall',site:'A',built:'s3',retired:'',vicType:'shed_pond_gt25',area:7200,w02Pad:'Enclosed',w02Clean:'Flood Washed Daily'},
-    {id:'f4',name:'Calf shed',site:'A',built:'s1',retired:'',vicType:'shed_pond_gt25',area:900,w02Pad:'Enclosed',w02Clean:'Scraped Weekly'}];
-  p.groups=[
-    {id:'g1',name:'Milkers — Barn 1',lw:650,lact:true,grazing:false,heads:{s1:700,s2:700,s3:700},alloc:[{fid:'f1',hrs:24}],calc:null},
-    {id:'g2',name:'Milkers — Barn 2',lw:650,lact:true,grazing:false,heads:{s1:0,s2:700,s3:700},alloc:[{fid:'f2',hrs:24}],calc:null},
-    {id:'g3',name:'Milkers — Barn 3',lw:650,lact:true,grazing:false,heads:{s1:0,s2:0,s3:700},alloc:[{fid:'f3',hrs:24}],calc:null},
-    {id:'g4',name:'Calves 0–3 months',lw:75,lact:false,grazing:false,heads:{s1:230,s2:460,s3:700},alloc:[{fid:'f4',hrs:24}],calc:{blocks:3,blockWeeks:6,intervalDays:122,reared:50,daysIn:91,birthKg:40,exitKg:110}}];
-  p.receptors=[
-    {id:'r1',kind:'sens',name:'H1 — neighbour house',cls:'dwelling',dist:{A:1400},dir:{A:2},terrain:'flat',veg:'crops',same:false,ovr:{},notes:''},
-    {id:'r2',name:'H2 — neighbour house',kind:'sens',cls:'dwelling',dist:{A:900},dir:{A:8},terrain:'flat',veg:'crops',same:false,ovr:{},notes:''},
-    {id:'r3',name:'T1 — township',kind:'sens',cls:'t125',dist:{A:3200},dir:{A:12},terrain:'downlow',veg:'crops',same:false,ovr:{},notes:''},
-    {id:'r4',name:'Manager house',kind:'sens',cls:'dwelling',dist:{A:350},dir:{A:0},terrain:'flat',veg:'crops',same:true,ovr:{},notes:'Same ownership — excluded from pass/fail'},
-    {id:'r5',name:'Creek',kind:'feat',cls:'waterway',dist:{A:240},dir:{A:4},terrain:'flat',veg:'crops',same:false,ovr:{},notes:''}];
-  p.own={A:{0:400,1:450,2:600,3:700,4:700,5:650,6:600,7:550,8:500,9:500,10:550,11:600,12:650,13:600,14:500,15:420}};
-  return p;}
 
 /* ================= STATE ================= */
 let DOC; // {base, scenarios:[{id,name,data}], active:'base'|id}
 let P;   // active project data
 let VIEW='project', METHOD=null, STAGE_SEL=null, WIND_IMPORT=null, CONFIRM=null;
 function load(){try{const s=localStorage.getItem('sfactor-doc');if(s){DOC=JSON.parse(s)}}catch(e){}
-  if(!DOC||!DOC.base)DOC={base:exampleProject(),scenarios:[],active:'base'};bindActive()}
+  if(!DOC||!DOC.base)DOC={base:blankProject(),scenarios:[],active:'base'};if(!DOC.id)DOC.id=uid('d');bindActive()}
 function bindActive(){P=DOC.active==='base'?DOC.base:(DOC.scenarios.find(s=>s.id===DOC.active)||{data:DOC.base}).data;migrate(P)}
 function migrate(p){const b=blankProject();for(const k in b)if(p[k]==null)p[k]=clone(b[k]);
   for(const k in b.project)if(p.project[k]==null)p.project[k]=clone(b.project[k]);for(const k in b.settings)if(p.settings[k]==null)p.settings[k]=clone(b.settings[k]);
+  delete p.example;if(p.project&&/^Example data to show how the tool works/.test(p.project.notes||''))p.project.notes='';
+  (p.groups||[]).forEach(g=>{if(g.calc){const c=g.calc,plan={};g.heads=g.heads||{};p.stages.forEach(st=>{const cv=+(g.heads[st.id]||0);plan[st.id]={calvings:cv,blocks:c.blocks,blockWeeks:c.blockWeeks,intervalDays:c.intervalDays,reared:c.reared,daysIn:c.daysIn};g.heads[st.id]=cv?Math.round(calfSim(plan[st.id]).peakHead):0});g.calf={birthKg:c.birthKg,exitKg:c.exitKg,plan};delete g.calc}if(g.calf&&!g.calf.plan)g.calf.plan={}});
   if(!p.wind.manual16)p.wind.manual16=Array(16).fill(0);p.geo=p.geo||{};p.geo.bnd=p.geo.bnd||{};p.geo.parcels=p.geo.parcels||[];p.facilities.forEach(f=>{if(!f.kind)f.kind=/feed ?pad/i.test(f.name)?'feedpad':/dairy|yard/i.test(f.name)?'dairy':/calf/i.test(f.name)?'calf':'barn'});p.receptors.forEach(r=>{r.ovr=r.ovr||{};r.dist=r.dist||{};r.dir=r.dir||{};r.kind=r.kind||'sens'})}
 function save(){DIRTY=true;try{localStorage.setItem('sfactor-doc',JSON.stringify(DOC))}catch(e){}}
 /* ---------- autosave to the project file (offline copy, Chrome/Edge) ---------- */
 let FILE_HANDLE=null,DIRTY=false,LAST_AUTO=null,AUTO_ERR=null;const AUTO_MIN=15;
 const canFS=()=>!!(window.showSaveFilePicker&&window.showOpenFilePicker&&window.indexedDB)&&!(window.claude&&window.claude.use);
 function idb(){return new Promise((res,rej)=>{const r=indexedDB.open('sfactor',1);r.onupgradeneeded=()=>r.result.createObjectStore('h');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
-async function storeHandle(h){try{const d=await idb();d.transaction('h','readwrite').objectStore('h').put(h,'last')}catch(e){}}
+async function storeHandle(h){try{const d=await idb();d.transaction('h','readwrite').objectStore('h').put({h,id:DOC.id},'last')}catch(e){}}
 async function loadHandle(){try{const d=await idb();return await new Promise(res=>{const q=d.transaction('h').objectStore('h').get('last');q.onsuccess=()=>res(q.result||null);q.onerror=()=>res(null)})}catch(e){return null}}
 async function writeHandle(h){const w=await h.createWritable();await w.write(docJSON());await w.close();DIRTY=false;LAST_AUTO=new Date();AUTO_ERR=null}
 async function autosaveTick(){if(!FILE_HANDLE||!DIRTY)return;try{if((await FILE_HANDLE.queryPermission({mode:'readwrite'}))!=='granted'){AUTO_ERR='Permission needed — press Reconnect';renderAuto();return}await writeHandle(FILE_HANDLE);renderAuto()}catch(e){AUTO_ERR='Autosave failed — '+(e.message||'file unavailable');renderAuto()}}
 setInterval(autosaveTick,AUTO_MIN*60*1000);
 let INSTALL_EVT=null,UPDATE_READY=null;
-let PENDING_HANDLE=null;(async()=>{if(canFS()){PENDING_HANDLE=await loadHandle();if(PENDING_HANDLE)renderAuto()}})();
+let PENDING_HANDLE=null;(async()=>{if(canFS()){const rec=await loadHandle();const h=rec&&rec.h?rec.h:rec;if(h&&(!rec.id||rec.id===DOC.id)){PENDING_HANDLE=h;renderAuto()}}})();
 /* flush to the file when the app is hidden or closed, so nothing waits on the 15-min tick */
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')autosaveTick()});
 /* installed app on Windows: double-click a .sfactor.json file → opens here with autosave back to it */
@@ -340,7 +330,7 @@ const stageIdx=sid=>P.stages.findIndex(s=>s.id===sid);
 function facActive(f,sid){const i=stageIdx(sid),b=stageIdx(f.built),r=f.retired?stageIdx(f.retired):Infinity;return b>-1&&i>=b&&i<r}
 function groupUnits(g,sid,m){
   const head=+(g.heads?.[sid]||0);if(!head)return{u:0,head:0,flags:[]};
-  if(g.calc){const s=calfSim(g.calc,head);return{u:s.peak[m==='FIX'?'VIC23':m],head:Math.round(s.peakHead),flags:m!=='VIC23'&&m!=='FIX'?[`Calves below ${m==='NAT'?'SCU':'DCU'} table range — scaled pro rata`]:[],calf:s}}
+  if(g.calf){const pl=g.calf.plan?.[sid];const mm=m==='FIX'?'VIC23':m;const f=pl&&+pl.calvings>0?calfSim(pl,g.calf.birthKg,g.calf.exitKg).perCalf[mm]:calfUF(m,g.calf.birthKg,g.calf.exitKg);return{u:head*f,head,flags:m!=='VIC23'&&m!=='FIX'?[`Calves below ${m==='NAT'?'SCU':'DCU'} table range — scaled pro rata`]:[]}}
   const f=unitFactor(m==='FIX'?'VIC23':m,+g.lw,!!g.lact);return{u:head*f.v,head,flags:f.flag?[`${g.name}: ${f.flag}`]:[]}}
 function facS1(f,sid,m,usersSCU){
   if(m==='VIC23'||m==='FIX'){const t=VIC_S1.find(t=>t.k===f.vicType)||VIC_S1[0];return{v:t.v,flag:null}}
@@ -366,19 +356,19 @@ function rcFactors(r,m,siteId,sc,sid){
   const cls=RCLASS.find(c=>c.k===r.cls)||RCLASS[0],ter=TERRAIN.find(t=>t.k===r.terrain)||TERRAIN[0],veg=VEG.find(v=>v.k===r.veg)||VEG[0],o=r.ovr||{};
   const bi=+(dirOf(r,siteId,sid)??0);const f={};
   if(m==='VIC23'){f.S1=sc.S1;f.S2=o.vicS2??cls.vic;f.S3=o.vicS3??veg.vic;f.S4=o.vicS4??ter.vic;
-    const arr=vicS5Array(P.wind);f.S5=o.vicS5??(arr?arr[(bi+8)%16]:P.settings.vicS5Default);f.S5src=o.vicS5!=null?'manual':(arr?'wind data':'no wind data — worst case');}
+    const arr=vicS5Array(P.wind);f.S5=o.vicS5??(arr?arr[(bi+8)%16]:DEF.vicS5Default);f.S5src=o.vicS5!=null?'manual':(arr?'wind data':'no wind data — worst case');}
   else if(m==='NAT'){f.S1=sc.S1;f.S2=o.natS2??cls.nat;f.S3=o.natS3??ter.nat;f.S4=o.natS4??veg.nat;
     const wc=natClassFromWind(P.wind,bi);const k=o.natS5k||wc||'normal';f.S5=NAT_S5.find(x=>x.k===k).v;f.S5src=o.natS5k?'manual':(wc?'wind data':'default normal');}
   else if(m==='W02'){f.S1=sc.S1;f.S2=o.w02S2??cls.w02;f.S3=o.w02S3??ter.w02;f.S4=o.w02S4??veg.w02;f.S5=1;f.S5src='not used';}
   f.S=['S1','S2','S3','S4','S5'].reduce((a,k)=>a*(f[k]??1),1);return f;
 }
 function fixedMins(r,sc,m){const mins=[];const st=P.project.state;const cls=RCLASS.find(c=>c.k===r.cls)||RCLASS[0];
-  if(r.kind==='feat'){const fc=FCLASS.find(c=>c.k===r.cls);if(fc&&(fc.k!=='bore'&&fc.k!=='channel'||sc.site?.hasPond))mins.push({m:fc.min,rule:fc.rule+(st!=='VIC'?' (Vic reference)':'')});return mins}
-  if(m==='VIC23'){mins.push({m:cls.t1,rule:`Vic Tier 1 minimum — ${cls.t1} m to ${cls.t1===250?'a sensitive use':cls.t1===500?'a rural living area':'a residential zone'}`})}
-  if(st==='VIC'){if(sc.hasFeedpad)mins.push({m:300,rule:'Wrigley & Dillon 2002 — feedpad 300 m from a neighbouring residence'});
-    if(sc.site?.hasPond)mins.push({m:300,rule:'2010 Vic feedpad guidelines — effluent pond 300 m from a neighbouring house'});
-    if(gateResult()==='grazing'&&sc.hasFeedpad)mins.push({m:100,rule:'Grazing feedpad — 100 m buildings and works trigger'});}
-  if(st==='NSW')mins.push({m:200,rule:'NSW EPA dairy guidance 2024 — 200 m to a rural residence'});
+  if(r.kind==='feat'){const fc=FCLASS.find(c=>c.k===r.cls);if(fc&&+fc.min>0&&(fc.k!=='bore'&&fc.k!=='channel'||sc.site?.hasPond))mins.push({m:+fc.min,rule:fc.rule+(st!=='VIC'?' (Vic reference)':(DEF.vicBasis==='current'&&/^Clause 53/.test(fc.rule)?' — draft, applied as a reference':''))});return mins}
+  if(m==='VIC23'){const t=cls.t1===750?DEF.t1.town:cls.t1===500?DEF.t1.rural:DEF.t1.sens;if(+t>0)mins.push({m:+t,rule:`Vic Tier 1 minimum — ${t} m to ${cls.t1===250?'a sensitive use':cls.t1===500?'a rural living area':'a residential zone'}`})}
+  if(st==='VIC'){if(sc.hasFeedpad&&+DEF.feedpadMin>0)mins.push({m:+DEF.feedpadMin,rule:`Wrigley & Dillon 2002 — feedpad ${DEF.feedpadMin} m from a neighbouring residence`});
+    if(sc.site?.hasPond&&+DEF.pondMin>0)mins.push({m:+DEF.pondMin,rule:`2010 Vic feedpad guidelines — effluent pond ${DEF.pondMin} m from a neighbouring house`});
+    if(gateResult()==='grazing'&&sc.hasFeedpad&&+DEF.grazingFeedpadMin>0)mins.push({m:+DEF.grazingFeedpadMin,rule:`Grazing feedpad — ${DEF.grazingFeedpadMin} m buildings and works trigger`});}
+  if(st==='NSW'&&+DEF.nswRural>0)mins.push({m:+DEF.nswRural,rule:`NSW EPA dairy guidance 2024 — ${DEF.nswRural} m to a rural residence`});
   return mins}
 function receptorResult(r,siteId,sid,m,scOverride){
   const sc=scOverride||siteCalc(siteId,sid,m);const dv=distOf(r,siteId,sid);const dist=dv==null?NaN:dv;const out={sc,dist,known:dv!=null,fromMap:fromMap(r,siteId,sid)};
@@ -387,7 +377,7 @@ function receptorResult(r,siteId,sid,m,scOverride){
   else if(m==='FIX'){const cls=RCLASS.find(c=>c.k===r.cls)||RCLASS[0];const fx=P.project.fixed||{};const d=cls.t1===750?+fx.town:cls.t1===500?+fx.rural:+fx.dwelling;out.formula=d||0;out.f=null}
   else{out.f=rcFactors(r,m,siteId,sc,sid);
     if(!sc.N){out.formula=0}
-    else if(m==='VIC23'){out.tier=sc.N<=90?1:2;out.formula=out.tier===1?0:Math.pow(sc.N/9,0.62)*out.f.S}
+    else if(m==='VIC23'){out.tier=sc.N<=DEF.tier1SDCU?1:2;out.formula=out.tier===1?0:Math.pow(sc.N/9,0.62)*out.f.S}
     else out.formula=Math.sqrt(sc.N)*out.f.S;}
   if(scOverride&&scOverride.cumFactor)out.formula*=scOverride.cumFactor;
   out.gov=Math.max(out.formula,...out.mins.map(x=>x.m),0);out.govRule=out.gov===out.formula&&out.formula>0?'formula':(out.mins.find(x=>x.m===out.gov)||{}).rule;
@@ -420,22 +410,21 @@ function stageSummary(sid,m){const rs=P.receptors.map(r=>({r,x:resultFor(r,sid,m
   const heads=P.sites.reduce((s,x)=>s+siteCalc(x.id,sid,m).heads,0);
   return{rs,pass:counted.length-fails.length,fail:fails.length,total:counted.length,worst,ceil,heads}}
 function exemptD(siteId,sid){const sc=siteCalc(siteId,sid,'VIC23');if(!sc.N)return null;const arr=vicS5Array(P.wind);
-  return DIRS.map((_,i)=>{const s5=arr?arr[(i+8)%16]:P.settings.vicS5Default;return sc.N<=90?250:Math.max(250,Math.pow(sc.N/9,0.62)*sc.S1*20*s5)})}
+  return DIRS.map((_,i)=>{const s5=arr?arr[(i+8)%16]:DEF.vicS5Default;return sc.N<=DEF.tier1SDCU?DEF.t1.sens:Math.max(DEF.t1.sens,Math.pow(sc.N/9,0.62)*sc.S1*20*s5)})}
 function noticeExempt(siteId,sid){ // Vic 53.AA-5.7: dwelling-case separation in every direction within own boundary
   const D=exemptD(siteId,sid);if(!D)return{status:'na'};const auto=ownAuto(siteId,sid);
-  if(auto){const g=noticeGeo(siteId,sid,D);return{status:g,geo:true,dirs:D.map((d,i)=>({D:d,b:auto[i]}))}}
-  const own=P.own?.[siteId]||{};const dirs=[];let ok=true,unknown=false;
-  for(let i=0;i<16;i++){const b=own[i];if(b===''||b==null){unknown=true;dirs.push({D:D[i],b:null});continue}if(+b<D[i])ok=false;dirs.push({D:D[i],b:+b})}
-  return{status:!ok?'fail':(unknown?'na':'pass'),dirs}}
+  if(!auto)return{status:'na',dirs:D.map(d=>({D:d,b:null}))};const g=noticeGeo(siteId,sid,D);return{status:g,geo:true,dirs:D.map((d,i)=>({D:d,b:auto[i]}))}}
+const vic53=()=>P.project.state==='VIC'&&DEF.vicBasis==='proposed';
 function gateResult(){const g=P.project.gate||{};if(P.project.gateOverride)return P.project.gateOverride;
   if(!g.grazing||!g.supp||!g.sustain)return'';return(g.grazing==='yes'&&g.supp==='yes'&&g.sustain==='yes')?'grazing':'intensive'}
-function triggers(sid){const st=P.project.state;const heads=P.groups.filter(g=>!g.calc).reduce((s,g)=>s+(+(g.heads?.[sid]||0)),0);
+function triggers(sid){const st=P.project.state;const heads=P.groups.filter(g=>!g.calf).reduce((s,g)=>s+(+(g.heads?.[sid]||0)),0);
   const allHead=P.groups.reduce((s,g)=>s+(+(g.heads?.[sid]||0)),0);const scu=P.sites.reduce((s,x)=>s+siteCalc(x.id,sid,'NAT').N,0);const t=[];
-  if(st==='VIC'&&gateResult()==='grazing'){t.push(['Grazing animal production — no use permit under Clause 53.AA; new buildings (e.g. calf shed) still check Farming Zone buildings-and-works setbacks','na'])}
-  else if(st==='VIC'){t.push(allHead>5000?['EPA licence (B01a) — over 5,000 head','warn']:allHead>1000?['Planning permit — over 1,000 head','warn']:['Up to 1,000 head — lodge with council','na'])}
-  if(st==='NSW'){t.push(heads>800?['Designated development: EIS, SEARs, EPA licence — over 800 head','warn']:heads>50?['Development application with statement of environmental effects — over 50 cows','warn']:['Under 50 cows','na'])}
-  if(st==='QLD')t.push(scu>150?['Development permit and environmental authority — over 150 SCU','warn']:['150 SCU or less — may be self-assessable','na']);
-  if(st==='SA')t.push(heads>500?['EPA licence and development approval — over 500 cows a day','warn']:heads>200?['EPA licence if in a water protection area — over 200 cows a day','warn']:['Under 200 cows a day','na']);
+  const T=DEF.trig;
+  if(st==='VIC'&&gateResult()==='grazing'){t.push([`Grazing animal production — no use permit${vic53()?' under Clause 53.AA':''}; new buildings (e.g. a calf shed) still check Farming Zone buildings-and-works setbacks`,'na'])}
+  else if(st==='VIC'){t.push(allHead>T.vicEPA?[`EPA licence — over ${fmt(T.vicEPA)} head`,'warn']:allHead>T.vicPermit?[`Planning permit — over ${fmt(T.vicPermit)} head`,'warn']:[`Up to ${fmt(T.vicPermit)} head — lodge with council`,'na'])}
+  if(st==='NSW'){t.push(heads>T.nswDesig?[`Designated development: EIS, SEARs, EPA licence — over ${fmt(T.nswDesig)} head`,'warn']:heads>T.nswDA?[`Development application with statement of environmental effects — over ${fmt(T.nswDA)} cows`,'warn']:[`Under ${fmt(T.nswDA)} cows`,'na'])}
+  if(st==='QLD')t.push(scu>T.qldSCU?[`Development permit and environmental authority — over ${fmt(T.qldSCU)} SCU`,'warn']:[`${fmt(T.qldSCU)} SCU or less — may be self-assessable`,'na']);
+  if(st==='SA')t.push(heads>T.saEPA?[`EPA licence and development approval — over ${fmt(T.saEPA)} cows a day`,'warn']:heads>T.saWPA?[`EPA licence if in a water protection area — over ${fmt(T.saWPA)} cows a day`,'warn']:[`Under ${fmt(T.saWPA)} cows a day`,'na']);
   if(['TAS','WA','NT','ACT'].includes(st))t.push(['No dairy-specific threshold — case by case','na']);
   return{t,heads:allHead,scu}}
 
@@ -492,11 +481,13 @@ function pill(st,txt){const c={pass:'pass',fail:'fail',na:'na',same:'na',warn:'w
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200)}
 
 /* ================= RENDER ================= */
-const VIEWS=[['project','Project'],['map','Map'],['herd','Herd & facilities'],['receptors','Receptors'],['own','Own boundary'],['wind','Wind'],['results','Results'],['report','Report'],['scen','Scenarios'],['file','Save / load']];
+const VIEWS=[['project','Project'],['map','Map'],['herd','Herd & facilities'],['receptors','Receptors'],['own','Own boundary'],['wind','Wind'],['results','Results'],['report','Report'],['scen','Scenarios'],['file','Save / load'],['defaults','Defaults & methods']];
 function render(){
   const ms=methodsFor(P.project.state);if(!METHOD||!ms.includes(METHOD))METHOD=ms[0];if(!STAGE_SEL||stageIdx(STAGE_SEL)<0)STAGE_SEL=P.stages.at(-1).id;
   const scName=DOC.active==='base'?'Base project':(DOC.scenarios.find(s=>s.id===DOC.active)||{}).name;
-  $('#app').innerHTML=`<header class="top"><div class="brand"><h1>Dairy S-Factor Tool</h1><span class="sub">${esc(P.project.name)} · ${esc(scName)}</span>${P.example?'<span class="tag">Example data</span>':''}${autoStatus()}${INSTALL_EVT?'<button class="btn small" data-act="installApp">Install app</button>':''}${UPDATE_READY?'<button class="btn small" data-act="updateApp">Update ready — reload</button>':''}${P.project.state==='VIC'?'<span class="tag">Vic 2023 method is a draft</span>':''}</div>
+  $('#app').innerHTML=`<header class="top"><div class="brand"><h1>Dairy S-Factor Tool</h1><span class="sub">${esc(P.project.name)} · ${esc(scName)}</span><button class="btn small ghost" data-act="askBlank">New project</button>${autoStatus()}${INSTALL_EVT?'<button class="btn small" data-act="installApp">Install app</button>':''}${UPDATE_READY?'<button class="btn small" data-act="updateApp">Update ready — reload</button>':''}${P.project.state==='VIC'?`<span class="tag">${DEF.vicBasis==='current'?'Vic current method':'Vic proposed 2023 method — draft'}</span>`:''}</div>
+  ${CONFIRM==='blank'?`<div class="confirm">Start a new project? This clears every input and scenario on screen. Your saved project file is not touched${FILE_HANDLE?` and autosave to ${esc(FILE_HANDLE.name)} stops`:''}. <button class="btn small danger" data-act="doBlank">Clear and start new</button><button class="btn small ghost" data-act="cancel">Cancel</button></div>`:''}
+  ${DEF_PENDING?`<div class="note">This project was saved with different defaults (Vic method: ${DEF_PENDING.vicBasis==='current'?'current':'proposed 2023'}). <button class="btn small" data-act="useProjDef">Use the project's defaults</button> <button class="btn small ghost" data-act="keepDef">Keep mine</button></div>`:''}
   <nav class="steps" aria-label="Steps">${VIEWS.map(([k,l])=>`<button type="button" data-view="${k}" aria-current="${VIEW===k}">${l}</button>`).join('')}</nav></header>
   <div class="layout"><main id="main">${VIEWFN[VIEW]()}</main><aside class="rail" id="rail"></aside></div><div class="mbar" id="mbar"></div>`;
   renderLive();initMaps();
@@ -522,14 +513,13 @@ project(){const p=P.project,g=gateResult();
    ${fld('Council',txt('project.council',p.council))}${fld('Assessor',txt('project.assessor',p.assessor))}${fld('Assessment date',`<input id="i-date" type="date" data-k="project.date" data-t="text" value="${esc(p.date)}">`)}</div>
    ${fld('State — sets the methods used',chips('project.state',STATES.map(([k,l])=>({k,l})),p.state))}
    ${fld('Average annual rainfall (national S1 table)',chips('project.rainfall',[{k:'lt750',l:'Under 750 mm'},{k:'gt750',l:'Over 750 mm'}],p.rainfall))}
-   <div class="hint">Methods for ${esc(p.state)}: ${methodsFor(p.state).map(m=>`<strong>${LIB[m].name}</strong> (${LIB[m].status})`).join(' · ')}</div>
    ${(p.state==='WA'||p.state==='TAS')?`<div class="grid">${fld('Fixed buffer to a dwelling (m)',num('project.fixed.dwelling',p.fixed.dwelling,10))}${fld('To rural living area (m)',num('project.fixed.rural',p.fixed.rural,10))}${fld('To a town or residential zone (m)',num('project.fixed.town',p.fixed.town,10))}</div><div class="hint">${p.state==='WA'?'Enter the council local planning policy distances (example: Shire of Plantagenet 2025 — 1,000 m to an isolated residence, 5,000 m to a townsite).':'Enter the planning scheme attenuation distance for the activity (Attenuation Code C9). Value to confirm with council.'}</div>`:''}
    ${fld('Notes',`<textarea id="i-notes" data-k="project.notes" data-t="text">${esc(p.notes)}</textarea>`)}</section>
-  <section class="card"><div class="hd"><h2>Classification</h2>${g?pill(g==='grazing'?'pass':'warn',g==='grazing'?'Grazing with feedpad':'Intensive dairy'):pill('na','Not answered')}</div>
+  ${p.state==='VIC'?`<section class="card"><div class="hd"><h2>Classification</h2>${g?pill(g==='grazing'?'pass':'warn',g==='grazing'?'Grazing with feedpad':'Intensive dairy'):pill('na','Not answered')}</div>
    <div class="hint">Victorian Grazing and Intensive Animal Production Guidelines (2018). All three yes = grazing animal production: Clause 53.AA does not apply and the S-factor runs as a risk check. Any no = intensive dairy farm.</div>
    ${[['grazing','Do the cows regularly have access to pasture for meaningful grazing?'],['supp','Is supplementary feeding done for purposes that are part of a grazing system?'],['sustain','Can the property sustain regular grazing?']].map(([k,q])=>fld(q,chips('project.gate.'+k,[{k:'yes',l:'Yes'},{k:'no',l:'No'}],p.gate[k]))).join('')}
    ${fld('Override (with note)',chips('project.gateOverride',[{k:'',l:'Use answers'},{k:'grazing',l:'Treat as grazing'},{k:'intensive',l:'Treat as intensive'}],p.gateOverride))}
-   <div class="hint">NSW: confined 10 hours a day or less = dairy (pasture-based); more = dairy (restricted, intensive).</div></section>
+</section>`:p.state==='NSW'?`<section class="card"><div class="hd"><h2>Classification</h2></div><div class="hint">Confined 10 hours a day or less = dairy (pasture-based); more = dairy (restricted, intensive).</div></section>`:''}
   <section class="card"><div class="hd"><h2>Stages</h2><div class="row">${P.stages[0].name.startsWith('Stage 0')?'':'<button class="btn small ghost" data-act="addStage0">Add Stage 0 (existing operation)</button>'}<button class="btn small" data-act="addStage">Add stage</button></div></div>
    <div class="hint">Stage 0 can hold the operation as it stands, with the proposal in Stage 1, to show what the new works add.</div>
    ${P.stages.map((s,i)=>`<div class="row">${txt(`stages.${i}.name`,s.name,'st-'+s.id)}${P.stages.length>1?`<button class="btn small danger" data-act="delStage" data-id="${s.id}">Remove</button>`:''}</div>`).join('')}</section>
@@ -584,11 +574,16 @@ receptors(){const sites=P.sites;return`<section class="card"><div class="hd"><h2
   <div class="hint">Distance is measured from the activity boundary to the receptor. Direction is from the site to the receptor. Factor chips show the ${esc(LIB[METHOD].name)} value; every method uses its own table.</div>
   ${P.receptors.map((r,i)=>recCard(r,i,sites)).join('')||'<div class="hint">No receptors yet.</div>'}</section>`},
 
-own(){return P.sites.map((s,si)=>{const own=P.own[s.id]||(P.own[s.id]={});const ne=noticeExempt(s.id,STAGE_SEL);const auto=ownAuto(s.id,STAGE_SEL);
-  return`<section class="card"><div class="hd"><h2>Own boundary — ${esc(s.name)}</h2>${P.project.state==='VIC'?pill(ne.status==='pass'?'pass':ne.status==='fail'?'fail':'na',ne.status==='pass'?'Notice exempt':ne.status==='fail'?'Not exempt':'Incomplete'):''}</div>
-  <div class="hint">Distance from the activity boundary to the client's own property boundary in each direction. Vic Clause 53.AA-5.7: if the required separation lies entirely inside the client's land, the application is exempt from third-party notice and review. Blank = unknown. Shown for ${esc((P.stages.find(x=>x.id===STAGE_SEL)||{}).name)}.</div>
-  ${auto?`<div class="note ok">Calculated from the map (title boundary and activity boundary). The exemption test checks the full required-separation outline against the title, not just these 16 lines. Manual entries are ignored while both are drawn.</div>`:''}
-  <div class="dirgrid">${DIRS.map((d,i)=>`<div class="field"><label>${d}${ne.dirs?` <span class="num" style="text-transform:none">· needs ${fmt(ne.dirs[i].D)}</span>`:''}</label>${auto?`<div class="num" style="padding:6px 0">${fmt(auto[i])} m</div>`:`<input id="ob-${s.id}-${i}" inputmode="decimal" data-k="own.${s.id}.${i}" data-t="num" value="${own[i]??''}">`}</div>`).join('')}</div></section>`}).join('')},
+own(){const sel=STAGE_SEL,m=METHOD;const ap=vic53()&&gateResult()!=='grazing';
+  const why=P.project.state!=='VIC'?'':gateResult()==='grazing'?'Not applicable — grazing animal production':DEF.vicBasis==='current'?'Not applicable — Clause 53.AA is a draft and the current Vic method is selected':'';
+  return`<section class="card"><div class="hd"><h2>Own boundary</h2>${fld('Stage',chips('__stage',P.stages.map(s=>({k:s.id,l:s.name})),sel,false))}</div>
+  <div class="hint">Measured on the map from the activity boundary to the client's title boundary in each direction. To change a distance, redraw the activity or title boundary on the Map step.</div></section>
+  ${P.sites.map(s=>{const auto=ownAuto(s.id,sel);const ne=ap?noticeExempt(s.id,sel):null;const D=ap?exemptD(s.id,sel):reqByDir(s.id,sel,m);
+   return`<section class="card"><div class="hd"><h3>${esc(s.name)}</h3>${ap?pill(ne.status==='pass'?'pass':ne.status==='fail'?'fail':'na',ne.status==='pass'?'Notice exempt':ne.status==='fail'?'Not exempt':'Boundary not drawn'):(why?pill('na',why.split(' — ')[0]):'')}</div>
+   ${why?`<div class="hint">${esc(why)}. The distances below are shown for information.</div>`:''}
+   ${!auto?`<div class="note">Draw the client title boundary and the ${esc((P.stages.find(x=>x.id===sel)||{}).name)} activity boundary on the Map step.</div>`:
+   `<div class="tw"><table><thead><tr><th>Direction</th><th>To own boundary</th><th>Required${ap?' (Vic 2023, dwelling)':` (${esc(LIB[m].name)}, dwelling)`}</th><th></th></tr></thead><tbody>${DIRS.map((d,i)=>{const b=auto[i],q=D?D[i]:null;return`<tr><td>${d}</td><td class="num">${fmt(b)} m</td><td class="num">${q!=null?fmt(q)+' m':'—'}</td><td>${q!=null&&b!=null?pill(b>=q?'pass':'fail',b>=q?'Inside own land':'Crosses boundary'):''}</td></tr>`}).join('')}</tbody></table></div>
+   ${ap?'<div class="hint">Vic Clause 53.AA-5.7: when the required separation lies wholly inside the client\'s land, the application is exempt from third-party notice and review. The test checks the full separation outline against the title, not only these 16 lines.</div>':''}`}</section>`}).join('')}`},
 
 wind(){const w=P.wind;const arr=vicS5Array(w);const l16=light16(w);
   return`<section class="card"><div class="hd"><h2>Wind data</h2>${w.bins?pill('pass',`${fmt(w.hours)} hours loaded`):(l16?pill('warn','Manual light-wind rose'):pill('na','None — worst case used'))}</div>
@@ -610,16 +605,15 @@ wind(){const w=P.wind;const arr=vicS5Array(w);const l16=light16(w);
   <div class="dirgrid">${DIRS.map((d,i)=>`<div class="field"><label>From ${d}</label><input id="m16-${i}" inputmode="decimal" data-k="wind.manual16.${i}" data-t="num" value="${w.manual16[i]||''}"></div>`).join('')}</div></section>
  <section class="card"><div class="hd"><h3>Wind factors and rose</h3></div>
   ${l16?`<div class="svgbox">${roseSVG(l16)}</div><div class="tw"><table><thead><tr><th>Wind from</th>${DIRS.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody><tr><td>Light-wind share</td>${l16.map(v=>`<td class="num">${fmt(100*v/l16.reduce((a,b)=>a+b,0),1)}%</td>`).join('')}</tr><tr><td>Vic S5 for receptor downwind</td>${(arr||[]).map(v=>`<td class="num">${fmt(v,2)}</td>`).join('')}</tr></tbody></table></div>
-   <div class="hint">Vic S5 = direction frequency ÷ highest + 0.2, applied to the receptor the wind blows toward. National S5 needs the full hourly file (≥60% of time within ±40° = 1.5; under 5% = 0.7).</div>`:'<div class="hint">No wind data. Vic S5 defaults to the worst case of ' + P.settings.vicS5Default + ' for every receptor; national S5 to "normal" unless set per receptor.</div>'}
-  <div class="grid">${fld('Exposure rating: moderate from (% of year, light wind toward receptor)',num('settings.risk.mod',P.settings.risk.mod,0.5))}${fld('High from (%)',num('settings.risk.high',P.settings.risk.high,0.5))}</div>
-  <div class="hint">Exposure rating thresholds are provisional and yours to set.</div></section>`},
+   <div class="hint">Vic S5 = direction frequency ÷ highest + 0.2, applied to the receptor the wind blows toward. National S5 needs the full hourly file (≥60% of time within ±40° = 1.5; under 5% = 0.7).</div>`:'<div class="hint">No wind data. Vic S5 uses the worst case of ' + DEF.vicS5Default + ' for every receptor; national S5 uses "normal" unless set per receptor.</div>'}
+  <div class="hint">Exposure ratings: moderate from ${DEF.risk.mod}% of the year, high from ${DEF.risk.high}% (set on Defaults &amp; methods).</div></section>`},
 
 results(){const ms=methodsFor(P.project.state);const m=METHOD;const g=gateResult();
   return`<section class="card"><div class="hd"><h2>Results</h2><span class="lbl">${esc(LIB[m].ver)}</span></div>
-  ${fld('Method',chips('__method',ms.map(k=>({k,l:LIB[k].name})),m,false))}
+  ${fld('Method',chips('__method',ms.map((k,i)=>({k,l:LIB[k].name+(i?'':' (primary)')})),m,false))}
   ${fld('S1 weighting',chips('settings.mode',[{k:'cons',l:'Conservative — confined time only'},{k:'time',l:'Time-weighted — paddock time counts as zero'}],P.settings.mode,false))}
-  ${g==='grazing'?'<div class="note">Classified as grazing animal production: Clause 53.AA does not apply. These results are a risk and neighbour-amenity check.</div>':''}
-  ${LIB[m].status.startsWith('Consultation')||LIB[m].status.startsWith('Comparison')?`<div class="note">${esc(LIB[m].name)}: ${esc(LIB[m].status)}.</div>`:''}
+  ${g==='grazing'?`<div class="note">Grazing animal production${vic53()?' — Clause 53.AA does not apply':''}. Results are a risk and neighbour-amenity check.</div>`:''}
+  ${m!==ms[0]?`<div class="note">${esc(LIB[m].name)} — comparison only. ${esc(LIB[ms[0]].name)} is the primary method (Defaults &amp; methods).</div>`:''}
   ${matrix(m)}</section>
   ${P.stages.map(s=>stageCard(s,m)).join('')}
   ${hasGeo()?`<section class="card"><div class="hd"><h2>Map</h2><span class="lbl">${esc((P.stages.find(x=>x.id===STAGE_SEL)||{}).name)} · ${esc(LIB[m].name)}</span></div><div class="mapbox" data-map="view" id="map-view"></div><div class="hint">Orange outline: required separation to a dwelling in each direction. Change the stage under the diagram below.</div></section>`:''}
@@ -629,6 +623,30 @@ results(){const ms=methodsFor(P.project.state);const m=METHOD;const g=gateResult
   ${exposureCard()}`},
 
 report(){return reportHTML()},
+
+defaults(){const st=DEF_STATE||P.project.state;const ms=methodsFor(st);
+  const di=(path,v,unit)=>`<span class="row" style="gap:6px;flex-wrap:nowrap"><input class="defin" data-def="${path}" inputmode="decimal" value="${esc(v)}">${unit?`<span class="hint">${unit}</span>`:''}</span>`;
+  const row=(l,path,v,unit,src)=>`<tr><td>${l}</td><td>${di(path,v,unit)}</td><td class="hint">${src||''}</td></tr>`;
+  const params=[];
+  if(st==='VIC'){
+    if(DEF.vicBasis==='proposed'){params.push(row('Tier 1 threshold','tier1SDCU',DEF.tier1SDCU,'SDCU','Vic 2023 draft — at or below this, fixed distances only'),row('Tier 1 minimum — sensitive use / dwelling','t1.sens',DEF.t1.sens,'m','Vic 2023 draft'),row('Tier 1 minimum — rural living area','t1.rural',DEF.t1.rural,'m','Vic 2023 draft'),row('Tier 1 minimum — residential zone','t1.town',DEF.t1.town,'m','Vic 2023 draft'))}
+    params.push(row('S5 when no wind data','vicS5Default',DEF.vicS5Default,'','Vic 2023: frequency ratio + 0.2, worst case 1.2'),
+      row('Feedpad to a neighbouring residence','feedpadMin',DEF.feedpadMin,'m','Wrigley &amp; Dillon 2002'),row('Effluent pond to a neighbouring house','pondMin',DEF.pondMin,'m','2010 Vic feedpad guidelines'),row('Grazing feedpad buildings and works','grazingFeedpadMin',DEF.grazingFeedpadMin,'m','Grazing feedpad trigger'),
+      row('Waterway','feat.waterway',DEF.feat.waterway,'m','Clause 53.AA AM4.1'+(DEF.vicBasis==='current'?' (draft — reference)':'')),row('Surface drain','feat.drain',DEF.feat.drain,'m','Clause 53.AA AM4.1'+(DEF.vicBasis==='current'?' (draft — reference)':'')),row('Potable water storage','feat.potable',DEF.feat.potable,'m','Clause 53.AA AM4.2'+(DEF.vicBasis==='current'?' (draft — reference)':'')),
+      row('Pond to farm bore','feat.bore',DEF.feat.bore,'m','2010 Vic feedpad guidelines'),row('Pond to channel or drain','feat.channel',DEF.feat.channel,'m','2010 Vic feedpad guidelines'),
+      row('Planning permit above','trig.vicPermit',DEF.trig.vicPermit,'head',''),row('EPA licence above','trig.vicEPA',DEF.trig.vicEPA,'head',''))}
+  if(st==='NSW')params.push(row('Rural residence minimum','nswRural',DEF.nswRural,'m','NSW EPA dairy guidance 2024'),row('Development application above','trig.nswDA',DEF.trig.nswDA,'cows',''),row('Designated development above','trig.nswDesig',DEF.trig.nswDesig,'head',''));
+  if(st==='QLD')params.push(row('Development permit above','trig.qldSCU',DEF.trig.qldSCU,'SCU',''));
+  if(st==='SA')params.push(row('EPA licence in a water protection area above','trig.saWPA',DEF.trig.saWPA,'cows/day',''),row('EPA licence and development approval above','trig.saEPA',DEF.trig.saEPA,'cows/day',''));
+  params.push(row('Wind exposure — moderate from','risk.mod',DEF.risk.mod,'% of year',''),row('Wind exposure — high from','risk.high',DEF.risk.high,'% of year',''));
+  return`<section class="card"><div class="hd"><h2>Defaults &amp; methods</h2><div class="row"><button class="btn small" data-act="saveDef">Save defaults file</button><button class="btn small ghost" data-act="resetDef">Reset to published values</button></div></div>
+  <div class="row"><input id="deffile" type="file" accept=".json"><button class="btn small ghost" data-act="loadDef">Load defaults file</button></div>
+  <div class="hint">Defaults are kept on this device and saved inside every project file. 0 turns a fixed minimum off.</div>
+  ${fld('State',chips('__defst',STATES.map(([k,l])=>({k,l})),st,false))}
+  ${st==='VIC'?fld('Victorian method',chips('__def.vicBasis',[{k:'current',l:'Current — 2002 feedpad guidelines (Code for Cattle Feedlots 1995)'},{k:'proposed',l:'Proposed — 2023 DEECA draft with Clause 53.AA (awaiting gazettal)'}],DEF.vicBasis,false)):''}</section>
+  <section class="card"><div class="hd"><h2>Parameters — ${esc((STATES.find(x=>x[0]===st)||[])[1]||st)}</h2></div><div class="tw"><table class="deftab"><thead><tr><th>Parameter</th><th>Value</th><th>Source</th></tr></thead><tbody>${params.join('')}</tbody></table></div></section>
+  ${ms.map((m,k)=>methodCard(m,k===0,st)).join('')}`},
+
 
 scen(){return`<section class="card"><div class="hd"><h2>Scenarios</h2><button class="btn small" data-act="newScen">Copy current into a new scenario</button></div>
   <div class="hint">Each scenario is a full copy of the project you can change freely — housing type, pond cover, space per cow, distances. All scenarios save in the same project file.</div>
@@ -651,33 +669,38 @@ file(){return`<section class="card"><div class="hd"><h2>Save project</h2></div>
   <div class="hint">Columns: name, type, distance, direction (16-point, e.g. NNE). Type uses the class names in the tool or "dwelling", "town", "waterway".</div>
   <div class="row"><button class="btn small ghost" data-act="copyCSV">Copy receptors CSV</button><button class="btn small ghost" data-act="saveCSV">Download receptors CSV</button></div>
   <textarea id="csvpaste" placeholder="name,type,distance,direction"></textarea><div class="row"><button class="btn small" data-act="importCSV">Add receptors from CSV</button></div></section>
- <section class="card"><div class="hd"><h2>Start again</h2></div><div class="row"><button class="btn small ghost" data-act="askBlank">New blank project</button><button class="btn small ghost" data-act="askExample">Load example project</button></div>
-  ${CONFIRM==='blank'||CONFIRM==='example'?`<div class="confirm">This replaces the current project and its scenarios. Save first if you need it. <button class="btn small danger" data-act="${CONFIRM==='blank'?'doBlank':'doExample'}">Replace</button><button class="btn small ghost" data-act="cancel">Cancel</button></div>`:''}
-  <div class="hint">Method tables in this version: ${Object.values(LIB).map(l=>`${esc(l.name)} — ${esc(l.ver)}`).join('<br>')}</div></section>`}
+ `}
 };
 
-function groupCard(g,i){const facs=P.facilities;const conf=(g.alloc||[]).reduce((s,a)=>s+(+a.hrs||0),0);
-  let calf='';if(g.calc){const c=g.calc;const sid=P.stages.find(s=>+(g.heads?.[s.id]||0)>0)?.id;const sim=sid?calfSim(c,+g.heads[sid]):null;
-    calf=`<div class="rcard" style="background:var(--soft)"><strong>Calf occupancy calculator</strong>
-     <div class="hint">Head per stage below = calvings per block. The tool steps through the year day by day and uses peak units, as the methods require.</div>
-     <div class="grid">${fld('Calving blocks per year',num(`groups.${i}.calc.blocks`,c.blocks,1))}${fld('Block length (weeks)',num(`groups.${i}.calc.blockWeeks`,c.blockWeeks,1))}${fld('Days between block starts',num(`groups.${i}.calc.intervalDays`,c.intervalDays,1))}
-     ${fld('% of calves reared in shed',num(`groups.${i}.calc.reared`,c.reared,5))}${fld('Days in shed',num(`groups.${i}.calc.daysIn`,c.daysIn,7))}${fld('Birth weight (kg)',num(`groups.${i}.calc.birthKg`,c.birthKg,5))}${fld('Exit weight (kg)',num(`groups.${i}.calc.exitKg`,c.exitKg,5))}</div>
-     ${sim?`<div class="row"><span>Peak <strong class="num">${fmt(sim.peakHead)}</strong> calves</span><span>Peak <strong class="num">${fmt(sim.peak.VIC23,1)}</strong> SDCU</span><span>Days empty per year <strong class="num">${fmt(sim.emptyDays)}</strong></span></div><div class="svgbox">${calfSVG(sim)}</div>`:''}</div>`}
+let CALF_ST={};
+function groupCard(g,i){const facs=P.facilities;const conf=(g.alloc||[]).reduce((s,a)=>s+(+a.hrs||0),0);const isC=!!g.calf;
+  let calf='';if(isC){const c=g.calf;const sid=CALF_ST[g.id]&&stageIdx(CALF_ST[g.id])>-1?CALF_ST[g.id]:P.stages.at(-1).id;const prevI=Math.max(0,stageIdx(sid)-1);
+    const pl=c.plan[sid]||(c.plan[sid]=Object.assign({},CALF_PLAN,c.plan[P.stages[prevI].id]||{}));const sim=+pl.calvings>0?calfSim(pl):null;const peak=sim?Math.round(sim.peakHead):0;
+    calf=`<div class="grid">${fld('Birth weight (kg)',num(`groups.${i}.calf.birthKg`,c.birthKg,5))}${fld('Exit weight (kg)',num(`groups.${i}.calf.exitKg`,c.exitKg,5))}<div class="field"><label>SDCU per calf at the busiest time</label><div class="num" style="padding:6px 0">${P.stages.map(s=>{const p2=c.plan[s.id];const v=p2&&+p2.calvings>0?calfSim(p2,c.birthKg,c.exitKg).perCalf.VIC23:calfUF('VIC23',c.birthKg,c.exitKg);return`${esc(s.name.split(' —')[0])}: ${fmt(v,3)}`}).join('<br>')}</div></div></div>
+    <div class="hint">With a calving pattern below, units follow the calves' ages on the busiest day; without one, calves of every age are assumed to be in the shed together.</div>
+    <details ${CALF_ST[g.id]?'open':''}><summary>Work out the maximum from a calving pattern</summary><div class="rcard" style="background:var(--soft);margin-top:8px">
+     ${fld('Calving pattern for',chips(`__calfst.${g.id}`,P.stages.map(s=>({k:s.id,l:s.name})),sid,false))}
+     <div class="grid">${fld('Calvings per block',num(`groups.${i}.calf.plan.${sid}.calvings`,pl.calvings,10))}${fld('Calving blocks per year',num(`groups.${i}.calf.plan.${sid}.blocks`,pl.blocks,1))}${fld('Block length (weeks)',num(`groups.${i}.calf.plan.${sid}.blockWeeks`,pl.blockWeeks,1))}
+     ${fld('Days between block starts',num(`groups.${i}.calf.plan.${sid}.intervalDays`,pl.intervalDays,1))}${fld('% of calves reared in the shed',num(`groups.${i}.calf.plan.${sid}.reared`,pl.reared,5))}${fld('Days in the shed',num(`groups.${i}.calf.plan.${sid}.daysIn`,pl.daysIn,7))}</div>
+     ${sim?`<div class="row"><span>Most calves on hand <strong class="num">${fmt(peak)}</strong></span><span>Days empty per year <strong class="num">${fmt(sim.emptyDays)}</strong></span><button class="btn small" data-act="useCalfPeak" data-id="${g.id}" data-sid="${sid}">Use ${fmt(peak)} for ${esc((P.stages.find(x=>x.id===sid)||{}).name)}</button></div><div class="svgbox">${calfSVG(sim)}</div>`:'<div class="hint">Enter calvings per block to see the most calves on hand.</div>'}</div></details>`}
   return`<div class="rcard"><div class="row" style="justify-content:space-between">${txt(`groups.${i}.name`,g.name,'gn-'+g.id)}<button class="btn small danger" data-act="delGroup" data-id="${g.id}">Remove</button></div>
-   <div class="grid">${P.stages.map(s=>fld(`${g.calc?'Calvings per block':'Head'} — ${esc(s.name)}`,num(`groups.${i}.heads.${s.id}`,g.heads?.[s.id]??0,10))).join('')}
-   ${g.calc?'':fld('Average liveweight (kg)',num(`groups.${i}.lw`,g.lw,10))}</div>
-   ${g.calc?'':fld('Status',chips(`groups.${i}.lact`,[{k:'true',l:'Lactating'},{k:'false',l:'Dry or young stock'}],String(!!g.lact),false))}
+   <div class="grid">${P.stages.map(s=>fld(`${isC?'Most calves in the shed at one time':'Head'} — ${esc(s.name)}`,num(`groups.${i}.heads.${s.id}`,g.heads?.[s.id]??0,10))).join('')}
+   ${isC?'':fld('Average liveweight (kg)',num(`groups.${i}.lw`,g.lw,10))}</div>
+   ${isC?'':fld('Status',chips(`groups.${i}.lact`,[{k:'true',l:'Lactating'},{k:'false',l:'Dry or young stock'}],String(!!g.lact),false))}
+   ${calf}
    <div class="lbl">Hours per day in each facility</div>
    <div class="grid">${facs.map(f=>{const ai=(g.alloc||[]).findIndex(a=>a.fid===f.id);const v=ai>-1?g.alloc[ai].hrs:0;return fld(esc(f.name),`<input id="al-${g.id}-${f.id}" inputmode="decimal" data-alloc="${i}" data-fid="${f.id}" value="${v||''}" placeholder="0">`)}).join('')}</div>
-   <div class="hint">Confined ${fmt(conf,1)} h/day${conf<24?` · paddock ${fmt(24-conf,1)} h`:''}${conf>24?' — over 24 h, check entries':''}</div>${calf}</div>`}
+   <div class="hint">Confined ${fmt(conf,1)} h/day${conf<24?` · paddock ${fmt(24-conf,1)} h`:''}${conf>24?' — over 24 h, check entries':''}</div></div>`}
 function unitsTable(){const ms=['VIC23','NAT','W02'];
   return`<div class="tw"><table><thead><tr><th>Stage</th><th>Head</th>${ms.map(m=>`<th>${LIB[m].unit}</th><th>S1 (${m==='VIC23'?'Vic 23':m==='NAT'?'Nat':'Vic 02'})</th>`).join('')}</tr></thead><tbody>
   ${P.stages.map(s=>P.sites.map(si=>{const c=ms.map(m=>siteCalc(si.id,s.id,m));return`<tr><td>${esc(s.name)}${P.sites.length>1?' · '+esc(si.name):''}</td><td class="num">${fmt(c[0].heads)}</td>${c.map(x=>`<td class="num">${fmt(x.N,1)}</td><td class="num">${fmt(x.S1,2)}</td>`).join('')}</tr>`}).join('')).join('')}</tbody></table></div>
   ${(()=>{const fl=new Set();P.stages.forEach(s=>P.sites.forEach(si=>ms.forEach(m=>siteCalc(si.id,s.id,m).flags.forEach(f=>fl.add(f)))));return fl.size?`<div>${[...fl].map(f=>`<div class="flag">⚑ ${esc(f)}</div>`).join('')}</div>`:''})()}`}
-function recCard(r,i,sites){const m=METHOD;const isF=r.kind==='feat';const o=r.ovr||{};
+function recCard(r,i,sites){const m=METHOD;const isF=r.kind==='feat';const o=r.ovr||{};const xs=P.stages.map(s=>({s,x:resultFor(r,s.id,m)}));const anyFail=xs.some(o=>o.x.status==='fail');
+  const strip=`<div class="rstat">${xs.map(({s,x})=>`<span>${pill(x.status)} <span class="s">${esc(s.name)}${x.known?` · at ${fmt(x.dist)} m`:''}${x.gov?` · needs ${fmt(x.gov)} m`:''}${x.margin!=null&&x.status!=='same'?` · <strong>${x.margin>=0?'+':''}${fmt(x.margin)} m</strong>`:''}</span></span>`).join('')}</div>`;
   const clsOpts=isF?FCLASS.map(c=>({k:c.k,l:c.l,v:c.min+' m'})):RCLASS.map(c=>({k:c.k,l:c.l,v:m==='VIC23'?c.vic:m==='NAT'?c.nat:m==='W02'?c.w02:null}));
   const key=m==='VIC23'?'vic':m==='NAT'?'nat':'w02';
-  return`<div class="rcard"><div class="top">${txt(`receptors.${i}.name`,r.name,'rn-'+r.id,'Receptor name')}<div class="row" style="justify-content:flex-end">${isF?'':`<button type="button" class="chip" data-chip="receptors.${i}.same" data-v="${String(!r.same)}" aria-pressed="${!!r.same}">Same owner</button>`}<button class="btn small danger" data-act="delRec" data-id="${r.id}">Remove</button></div></div>
+  return`<div class="rcard${anyFail?' fail':''}"><div class="top">${txt(`receptors.${i}.name`,r.name,'rn-'+r.id,'Receptor name')}<div class="row" style="justify-content:flex-end">${isF?'':`<button type="button" class="chip" data-chip="receptors.${i}.same" data-v="${String(!r.same)}" aria-pressed="${!!r.same}">Same owner</button>`}<button class="btn small danger" data-act="delRec" data-id="${r.id}">Remove</button></div></div>
+   ${strip}
    ${fld(isF?'Feature':'Type',chips(`receptors.${i}.cls`,clsOpts,r.cls))}
    ${r.ll?`<div class="note ok">Pinned on the map${sites.some(s=>fromMap(r,s.id,STAGE_SEL))?`: ${sites.map(s=>fromMap(r,s.id,STAGE_SEL)?`${fmt(distOf(r,s.id,STAGE_SEL))} m ${DIRS[dirOf(r,s.id,STAGE_SEL)]} from ${esc(s.name)}`:'').filter(Boolean).join(' · ')} (${esc((P.stages.find(x=>x.id===STAGE_SEL)||{}).name)}). The manual distance and direction below are ignored while the pin and boundary exist.`:'. Draw the activity boundary on the Map step to calculate distance.'} <button class="btn small ghost" data-act="removePin" data-id="${r.id}">Remove pin</button></div>`:''}
    ${sites.map(s=>{const fm=fromMap(r,s.id,STAGE_SEL);const dv=fm?distOf(r,s.id,STAGE_SEL):r.dist?.[s.id];const dd=fm?dirOf(r,s.id,STAGE_SEL):r.dir?.[s.id];
@@ -701,12 +724,12 @@ function matrix(m){if(!P.receptors.length)return'<div class="hint">Add receptors
 function stageCard(s,m){const ss=stageSummary(s.id,m);const tr=triggers(s.id);const st=P.project.state;
   const sitesInfo=P.sites.map(si=>{const c=siteCalc(si.id,s.id,m);return`${P.sites.length>1?esc(si.name)+': ':''}${fmt(c.heads)} head · ${fmt(c.N,1)} ${LIB[m].unit} · S1 ${fmt(c.S1,2)}`}).join('<br>');
   const checks=[];
-  if(st==='VIC'&&gateResult()==='grazing'){checks.push(['Clause 53.AA (Tier 1, notice exemption, 50% test)','na','Not applicable — grazing animal production. Distances above are a risk check.'])}
-  else if(st==='VIC'){P.sites.forEach(si=>{const c=siteCalc(si.id,s.id,'VIC23');checks.push(['Vic Tier 1 threshold (90 SDCU)',c.N>90?'warn':'pass',c.N>90?`${fmt(c.N,1)} SDCU — Tier 2 required`:`${fmt(c.N,1)} SDCU — Tier 1 distances apply`]);
-    const ne=noticeExempt(si.id,s.id);checks.push(['Notice and review exemption (53.AA-5.7)',ne.status,ne.status==='pass'?'Separation wholly within own boundary':ne.status==='fail'?'Separation extends past own boundary':'Own-boundary distances incomplete'])});
+  if(vic53()&&gateResult()==='grazing'){checks.push(['Clause 53.AA (Tier 1, notice exemption, 50% test)','na','Not applicable — grazing animal production. Distances above are a risk check.'])}
+  else if(vic53()){P.sites.forEach(si=>{const c=siteCalc(si.id,s.id,'VIC23');checks.push([`Vic Tier 1 threshold (${DEF.tier1SDCU} SDCU)`,c.N>DEF.tier1SDCU?'warn':'pass',c.N>DEF.tier1SDCU?`${fmt(c.N,1)} SDCU — Tier 2 required`:`${fmt(c.N,1)} SDCU — Tier 1 distances apply`]);
+    const ne=noticeExempt(si.id,s.id);checks.push(['Notice and review exemption (53.AA-5.7)',ne.status,ne.status==='pass'?'Separation wholly within own boundary':ne.status==='fail'?'Separation extends past own boundary':'Draw the title and activity boundaries on the Map step'])});
     P.receptors.filter(r=>r.kind!=='feat'&&!r.same).forEach(r=>{if(+r.propArea>0&&r.bufArea!==''&&r.bufArea!=null){const pc=100*(+r.bufArea)/(+r.propArea);checks.push([`50% neighbour test — ${r.name}`,pc<=50?'pass':'fail',`${fmt(pc)}% of property inside buffer`])}
       if(r.reuseDist!=null&&r.reuseDist!==''){checks.push([`Reuse area 100 m — ${r.name}`,+r.reuseDist>=100?'pass':'fail',`${fmt(+r.reuseDist)} m`])}});}
-  if(st==='VIC'&&gateResult()!=='grazing'){(P.geo.parcels||[]).forEach(pc=>{const x=parcelPct(pc,P.sites[0].id,s.id,'VIC23');if(x)checks.push([`50% neighbour test — ${pc.name} (map)`,x.pct<=50?'pass':'fail',`${fmt(x.pct)}% of ${fmt(x.ha,1)} ha inside the required separation`])})}
+  if(vic53()&&gateResult()!=='grazing'){(P.geo.parcels||[]).forEach(pc=>{const x=parcelPct(pc,P.sites[0].id,s.id,'VIC23');if(x)checks.push([`50% neighbour test — ${pc.name} (map)`,x.pct<=50?'pass':'fail',`${fmt(x.pct)}% of ${fmt(x.ha,1)} ha inside the required separation`])})}
   const near=ss.rs.filter(o=>o.x.status==='fail'&&o.x.gov&&o.x.margin>=-0.2*o.x.gov);if(near.length)checks.push(['Tier 3 flag','warn',`${near.length} receptor(s) fail by 20% or less — a site-specific assessment may support a smaller distance`]);
   if(P.sites.length>2)checks.push(['More than two facilities','warn','Vic: Tier 3 assessment required']);
   return`<section class="card"><div class="hd"><h3>${esc(s.name)}</h3>${ss.total?(ss.fail?pill('fail',`${ss.fail} of ${ss.total} FAIL`):pill('pass',`${ss.total} of ${ss.total} PASS`)):pill('na','no data')}</div>
@@ -717,7 +740,7 @@ function stageCard(s,m){const ss=stageSummary(s.id,m);const tr=triggers(s.id);co
    <div><div class="lbl">Approval triggers</div>${tr.t.map(t=>`<div>${pill(t[1],t[1]==='warn'?'Trigger':'Info')} ${esc(t[0])}</div>`).join('')}</div>
    ${(()=>{const fl=new Set();P.sites.forEach(si=>siteCalc(si.id,s.id,m).flags.forEach(f=>fl.add(f)));return[...fl].map(f=>`<div class="flag">⚑ ${esc(f)}</div>`).join('')})()}</section>`}
 function exposureCard(){const w=P.wind;if(!w.bins)return`<section class="card"><div class="hd"><h2>Wind exposure</h2></div><div class="hint">Load an hourly wind file on the Wind step to see how often each receptor sits downwind.</div></section>`;
-  const R=P.settings.risk;const s0=P.sites[0].id;
+  const R=DEF.risk;const s0=P.sites[0].id;
   return`<section class="card"><div class="hd"><h2>Wind exposure per receptor</h2><span class="lbl">${esc(w.label||'Hourly file')} · ${fmt(w.hours)} h</span></div>
   <div class="tw"><table><thead><tr><th>Receptor</th><th>Toward receptor (22.5° sector)</th><th>Light wind ≤3 m/s</th><th>Light, evening + night</th><th>Within ±40°</th><th>Rating</th></tr></thead><tbody>
   ${P.receptors.filter(r=>r.kind!=='feat').map(r=>{const di=+(dirOf(r,s0,P.stages.at(-1).id)??0);const e=exposure(w,di);const rt=e.lightPct>=R.high?['fail','High']:e.lightPct>=R.mod?['warn','Moderate']:['pass','Low'];
@@ -735,7 +758,7 @@ function calfSVG(sim){const W=560,H=120,pad=28,d=sim.series.head,n=d.length,mx=M
   <text x="${pad}" y="12" font-size="11" fill="var(--muted)">Calves on hand through one year · peak ${fmt(sim.peakHead)}</text>${['Day 0','Day 120','Day 240','Day 365'].map((t,k)=>`<text x="${pad+k*(W-pad*2)/3}" y="${H-5}" font-size="10" fill="var(--muted)" text-anchor="${k===0?'start':k===3?'end':'middle'}">${t}</text>`).join('')}</svg>`}
 function reqByDir(siteId,sid,m){const sc=siteCalc(siteId,sid,m);if(!sc.N)return null;const arr=vicS5Array(P.wind);
   return DIRS.map((_,i)=>{const dw={cls:'dwelling',kind:'sens',dist:{[siteId]:0},dir:{[siteId]:i},terrain:'flat',veg:'crops',ovr:{}};return receptorResult(dw,siteId,sid,m,sc).gov})}
-function diagramSVG(siteId,m){const S=520,c=S/2;const req=P.stages.map(s=>({s,d:reqByDir(siteId,s.id,m)}));const own=P.own[siteId]||{};
+function diagramSVG(siteId,m){const S=520,c=S/2;const req=P.stages.map(s=>({s,d:reqByDir(siteId,s.id,m)}));const own=Object.assign({},ownAuto(siteId,STAGE_SEL)||{});
   const recs=P.receptors.filter(r=>distOf(r,siteId,STAGE_SEL)!=null&&dirOf(r,siteId,STAGE_SEL)!=null);
   const maxD=Math.max(100,...recs.map(r=>distOf(r,siteId,STAGE_SEL)),...req.flatMap(x=>x.d||[0]),...Object.values(own).filter(v=>v!==''&&v!=null).map(Number));
   const sc=(c-50)/(maxD*1.05);const pt=(d,i)=>[c+d*sc*Math.sin(i*22.5*Math.PI/180),c-d*sc*Math.cos(i*22.5*Math.PI/180)];
@@ -763,11 +786,11 @@ function compareTable(){const all=[{k:'base',name:'Base project',data:DOC.base},
 function reportHTML(){const p=P.project,m=METHOD,g=gateResult();
   return`<section class="card report"><div class="row noprint"><button class="btn" data-act="print">Print or save as PDF</button><button class="btn ghost" data-act="copySummary">Copy summary text</button><span class="hint">Printing works in the offline copy of the tool (Save / load), not inside the Claude viewer.</span></div>
   <h1>Odour separation assessment — ${esc(p.name)}</h1>
-  <p class="hint">${[p.client,p.address,p.state,p.council,p.assessor&&'Assessor '+p.assessor,p.date].filter(v=>v&&String(v).trim()).map(esc).join(' · ')}${P.example?' · EXAMPLE DATA':''}</p>
+  <p class="hint">${[p.client,p.address,p.state,p.council,p.assessor&&'Assessor '+p.assessor,p.date].filter(v=>v&&String(v).trim()).map(esc).join(' · ')}</p>
   <h2>Summary</h2>
   <p>Classification: <strong>${g==='grazing'?'grazing animal production (risk check only)':g==='intensive'?'intensive dairy':'not set'}</strong>. Method: <strong>${esc(LIB[m].name)}</strong> — ${esc(LIB[m].status)}. S1 weighting: ${P.settings.mode==='time'?'time-weighted':'conservative'}.</p>
-  <div class="tw"><table><thead><tr><th>Stage</th><th>Head</th><th>Result</th><th>Governing receptor</th><th>Margin</th><th>Herd ceiling</th>${p.state==='VIC'?'<th>Notice exempt</th>':''}</tr></thead><tbody>
-   ${P.stages.map(s=>{const ss=stageSummary(s.id,m);const ne=p.state==='VIC'?noticeExempt(P.sites[0].id,s.id):null;return`<tr><td>${esc(s.name)}</td><td class="num">${fmt(ss.heads)}</td><td>${ss.total?(ss.fail?pill('fail',`${ss.fail} of ${ss.total} FAIL`):pill('pass',`${ss.total} PASS`)):'—'}</td><td>${ss.worst?esc(ss.worst.r.name):'—'}</td><td class="num">${ss.worst?fmt(ss.worst.x.margin)+' m':'—'}</td><td class="num">${ss.ceil?fmt(ss.ceil.x.maxHead):'—'}</td>${ne?`<td>${pill(ne.status,ne.status==='pass'?'Yes':ne.status==='fail'?'No':'—')}</td>`:''}</tr>`}).join('')}</tbody></table></div>
+  <div class="tw"><table><thead><tr><th>Stage</th><th>Head</th><th>Result</th><th>Governing receptor</th><th>Margin</th><th>Herd ceiling</th>${vic53()&&g!=='grazing'?'<th>Notice exempt</th>':''}</tr></thead><tbody>
+   ${P.stages.map(s=>{const ss=stageSummary(s.id,m);const ne=vic53()&&g!=='grazing'?noticeExempt(P.sites[0].id,s.id):null;return`<tr><td>${esc(s.name)}</td><td class="num">${fmt(ss.heads)}</td><td>${ss.total?(ss.fail?pill('fail',`${ss.fail} of ${ss.total} FAIL`):pill('pass',`${ss.total} PASS`)):'—'}</td><td>${ss.worst?esc(ss.worst.r.name):'—'}</td><td class="num">${ss.worst?fmt(ss.worst.x.margin)+' m':'—'}</td><td class="num">${ss.ceil?fmt(ss.ceil.x.maxHead):'—'}</td>${ne?`<td>${pill(ne.status,ne.status==='pass'?'Yes':ne.status==='fail'?'No':'—')}</td>`:''}</tr>`}).join('')}</tbody></table></div>
   <h2>Results by receptor and stage</h2>${matrix(m)}
   <h2>Separation diagram</h2>${hasGeo()?`<div class="mapbox" data-map="view" id="map-report"></div>`:''}${P.sites.map(s=>`<div class="svgbox">${diagramSVG(s.id,m)}</div>`).join('')}
   <h2>Receptor schedule</h2><div class="tw"><table><thead><tr><th>Receptor</th><th>Type</th><th>Distance</th><th>Direction</th><th>Terrain</th><th>Vegetation</th><th>Factors (${esc(LIB[m].name)})</th><th>Notes</th></tr></thead><tbody>
@@ -776,14 +799,38 @@ function reportHTML(){const p=P.project,m=METHOD,g=gateResult();
   <div class="tw"><table><thead><tr><th>Facility</th><th>Built</th><th>Retired</th><th>Area</th><th>Vic 2023 type</th><th>2002 pad / cleaning</th></tr></thead><tbody>${P.facilities.map(f=>`<tr><td>${esc(f.name)}</td><td>${esc(P.stages.find(s=>s.id===f.built)?.name)}</td><td>${esc(P.stages.find(s=>s.id===f.retired)?.name||'—')}</td><td class="num">${fmt(+f.area)} m²</td><td>${esc(VIC_S1.find(t=>t.k===f.vicType)?.l)}</td><td>${esc(f.w02Pad)} / ${esc(f.w02Clean)}</td></tr>`).join('')}</tbody></table></div>
   <h2>Compliance checks and approval triggers</h2>${P.stages.map(s=>stageCard(s,m)).join('')}
   <h2>Wind</h2><p>Source: ${esc(P.wind.label||(P.wind.bins?'Hourly file':'No wind data — worst-case wind factors used'))}.</p>${exposureCard()}
-  <h2>Method appendix</h2>
-  <p><strong>Vic 2023:</strong> D = (SDCU ÷ 9)^0.62 × S1 × S2 × S3 × S4 × S5. ${esc(LIB.VIC23.ver)}. ${esc(LIB.VIC23.status)}.</p>
-  <p><strong>National:</strong> D = √SCU × S1 × S2 × S3 × S4 × S5. ${esc(LIB.NAT.ver)}.</p>
-  <p><strong>Vic 2002:</strong> D = S1 × S2 × S3 × S4 × √DCU. ${esc(LIB.W02.ver)}.</p>
-  <p>Fixed minimums applied where relevant: Vic Tier 1 (250 / 500 / 750 m); Wrigley &amp; Dillon 2002 feedpad 300 m to a neighbouring residence; 2010 Vic guidelines effluent pond 300 m to a neighbouring house, 200 m to a bore, 60 m to a channel; Clause 53.AA 100 m waterway, 60 m surface drain, 800 m potable storage; NSW 200 m to a rural residence.</p>
+  <h2>Method appendix</h2>${methodAppendix()}
   <h2>Assumptions and flags</h2><p>${esc(p.notes)}</p>
   ${(()=>{const fl=new Set();P.stages.forEach(s=>P.sites.forEach(si=>siteCalc(si.id,s.id,m).flags.forEach(f=>fl.add(f))));if(!P.wind.bins)fl.add('No hourly wind data: Vic S5 set to worst case for every receptor unless overridden.');return[...fl].map(f=>`<div class="flag">⚑ ${esc(f)}</div>`).join('')})()}
   </section>`}
+function methodCard(m,primary,st){const L=LIB[m];const tbl=(h,rows)=>`<div class="tw"><table class="deftab"><thead><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map((c,i)=>`<td${i?' class="num"':''}>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  const key=m==='VIC23'?'vic':m==='NAT'?'nat':'w02';let body='';
+  if(m==='VIC23')body=`<p><strong>D = (SDCU ÷ 9)<sup>0.62</sup> × S1 × S2 × S3 × S4 × S5</strong>, measured from the activity boundary (including effluent ponds). SDCU from Table 19 by liveweight and lactation; 9 is the dairy animal factor. At or below ${DEF.tier1SDCU} SDCU only the Tier 1 fixed distances apply. S1 is weighted by the time animals spend in each facility type. S5 = light-wind (≤3 m/s) frequency toward the receptor ÷ the highest direction + 0.2; ${DEF.vicS5Default} without wind data.</p>
+   <details><summary>S1 — design and management (Table 22)</summary>${tbl(['Facility type','S1'],VIC_S1.map(t=>[esc(t.l),t.v]))}</details>
+   <details><summary>S2 — sensitive use (Table 23)</summary>${tbl(['Sensitive use','S2'],[['Residential zone',60],['Rural living area',40],['Dwelling',20]])}</details>
+   <details><summary>S3 — surface roughness (Table 24)</summary>${tbl(['Surface','S3'],VEG.map(t=>[esc(t.l),t.vic]))}</details>
+   <details><summary>S4 — terrain (Table 25)</summary>${tbl(['Terrain','S4'],TERRAIN.map(t=>[esc(t.l),t.vic]))}</details>
+   <details><summary>SDCU by liveweight (Table 19)</summary>${tbl(['Up to kg','Dry','Lactating'],SDCU.map(r=>[isFinite(r[0])?r[0]:'over 750',r[1],r[2]??'—']))}</details>`;
+  if(m==='W02')body=`<p><strong>D = S1 × S2 × S3 × S4 × √DCU</strong> (DCU: 550 kg = 1). S1 from pad type, cleaning and space per DCU (10 / 15 / 20 m², interpolated). Tables transcribed from your 2002 workbooks; the published appendices were not sighted.</p>
+   <details><summary>S1 — pad, cleaning and space</summary>${tbl(['Pad / cleaning','10 m²','15 m²','20 m²'],Object.entries(W02_S1).flatMap(([pad,o])=>Object.entries(o).map(([c,v])=>[`${pad} — ${c}`,...v])))}</details>
+   <details><summary>S2 — receptor</summary>${tbl(['Receptor','S2'],RCLASS.map(c=>[esc(c.l),c.w02]))}</details>
+   <details><summary>S3 — terrain</summary>${tbl(['Terrain','S3'],TERRAIN.map(t=>[esc(t.l),t.w02]))}</details>
+   <details><summary>S4 — vegetation</summary>${tbl(['Vegetation','S4'],VEG.map(t=>[esc(t.l),t.w02]))}</details>
+   <details><summary>DCU by liveweight</summary>${tbl(['kg','DCU'],DCU_T.map(r=>[r[0],r[1]]))}</details>`;
+  if(m==='NAT')body=`<p><strong>D = √SCU × S1 × S2 × S3 × S4 × S5</strong> (SCU: 600 kg = 1). S1 from stocking density and rainfall; S5 from wind frequency toward the receptor.</p>
+   <details><summary>S1 — stocking density (m²/SCU)</summary>${tbl(['Under 750 mm','S1','Over 750 mm','S1'],NAT_S1.lt750.map((r,i)=>[r[0],r[1],NAT_S1.gt750[i][0],NAT_S1.gt750[i][1]]))}</details>
+   <details><summary>S2 — receptor</summary>${tbl(['Receptor','S2'],RCLASS.map(c=>[esc(c.l),c.nat]))}</details>
+   <details><summary>S3 — terrain</summary>${tbl(['Terrain','S3'],TERRAIN.map(t=>[esc(t.l),t.nat]))}</details>
+   <details><summary>S4 — vegetation</summary>${tbl(['Vegetation','S4'],VEG.map(t=>[esc(t.l),t.nat]))}</details>
+   <details><summary>S5 — wind</summary>${tbl(['Wind class','S5'],NAT_S5.map(t=>[esc(t.l),t.v]))}</details>
+   <details><summary>SCU by liveweight</summary>${tbl(['kg','SCU'],SCU_T.map(r=>[r[0],r[1]]))}</details>`;
+  if(m==='FIX')body=`<p>Fixed distance from the council's local planning policy or the planning scheme attenuation distance, entered per project.</p>`;
+  return`<section class="card"><div class="hd"><h3>${esc(L.name)}</h3>${primary?pill('pass','Primary'):pill('na','Comparison')}</div><div class="hint">${esc(L.status)} · ${esc(L.ver)}</div>${body}</section>`}
+function methodAppendix(){const st=P.project.state;const ms=methodsFor(st);const f=[];
+  const txt={VIC23:`<p><strong>Vic 2023:</strong> D = (SDCU ÷ 9)^0.62 × S1 × S2 × S3 × S4 × S5. ${esc(LIB.VIC23.ver)}. ${esc(LIB.VIC23.status)}.</p>`,NAT:`<p><strong>National:</strong> D = √SCU × S1 × S2 × S3 × S4 × S5. ${esc(LIB.NAT.ver)}.</p>`,W02:`<p><strong>Vic 2002:</strong> D = S1 × S2 × S3 × S4 × √DCU. ${esc(LIB.W02.ver)}. ${esc(LIB.W02.status)}.</p>`,FIX:`<p><strong>Fixed buffer:</strong> ${esc(LIB.FIX.ver)}.</p>`};
+  if(st==='VIC'){if(DEF.vicBasis==='proposed')f.push(`Vic Tier 1 (${DEF.t1.sens} / ${DEF.t1.rural} / ${DEF.t1.town} m at or below ${DEF.tier1SDCU} SDCU)`);if(+DEF.feedpadMin)f.push(`feedpad ${DEF.feedpadMin} m to a neighbouring residence (Wrigley &amp; Dillon 2002)`);if(+DEF.pondMin)f.push(`effluent pond ${DEF.pondMin} m to a neighbouring house, ${DEF.feat.bore} m to a bore, ${DEF.feat.channel} m to a channel (2010 Vic guidelines)`);f.push(`${DEF.feat.waterway} m waterway, ${DEF.feat.drain} m surface drain, ${DEF.feat.potable} m potable storage (Clause 53.AA${DEF.vicBasis==='current'?' draft, as a reference':''})`)}
+  if(st==='NSW'&&+DEF.nswRural)f.push(`${DEF.nswRural} m to a rural residence (NSW EPA)`);
+  return ms.map(m=>txt[m]).join('')+(f.length?`<p>Fixed minimums applied: ${f.join('; ')}.</p>`:'')+(st==='VIC'?`<p>Victorian method used: ${DEF.vicBasis==='current'?'current (2002 feedpad guidelines)':'proposed (2023 DEECA draft, awaiting gazettal)'}.</p>`:'')}
 function summaryText(){const m=METHOD||methodsFor(P.project.state)[0];return[`${P.project.name} — ${LIB[m].name} (${LIB[m].status})`,...P.stages.map(s=>{const ss=stageSummary(s.id,m);return`${s.name}: ${fmt(ss.heads)} head — ${ss.total?(ss.fail?`${ss.fail} of ${ss.total} receptors FAIL`:`all ${ss.total} receptors PASS`):'no data'}${ss.worst?`; governing ${ss.worst.r.name} ${fmt(ss.worst.x.margin)} m`:''}${ss.ceil?`; herd ceiling ${fmt(ss.ceil.x.maxHead)} head`:''}`})].join('\n')}
 
 /* ---------- wind import ---------- */
@@ -818,9 +865,9 @@ async function download(name,text,type){
   if(DL){try{await DL.save({filename:name,data:text});toast('Saved')}catch(e){toast(e&&e.code==='declined'?'Save cancelled':'Save is not available here — use Copy instead')}return}
   try{const b=new Blob([text],{type});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);toast('Download started — if nothing appears, use Copy instead')}catch(e){toast('Download is blocked here — use Copy instead')}}
 async function copy(text,msg){try{await navigator.clipboard.writeText(text);toast(msg)}catch(e){const t=document.createElement('textarea');t.value=text;document.body.appendChild(t);t.select();try{document.execCommand('copy');toast(msg)}catch(_){toast('Copy failed — select the text manually')}t.remove()}}
-function docJSON(){const out=clone(DOC);out.savedAt=new Date().toISOString();out.methods=Object.fromEntries(Object.values(LIB).map(l=>[l.id,l.ver]));
+function docJSON(){const out=clone(DOC);out.savedAt=new Date().toISOString();out.defaults=DEF;out.methods=Object.fromEntries(Object.values(LIB).map(l=>[l.id,l.ver]));
   out.resultsSnapshot=summaryText();return JSON.stringify(out)}
-function loadDoc(text){FILE_HANDLE=null;try{const d=JSON.parse(text);DOC=d.base?{base:d.base,scenarios:d.scenarios||[],active:'base'}:{base:d,scenarios:[],active:'base'};bindActive();calfCache.clear();save();VIEW='project';render();toast('Project loaded')}catch(e){toast('That is not a project file')}}
+function loadDoc(text){FILE_HANDLE=null;PENDING_HANDLE=null;try{const d=JSON.parse(text);DOC=d.base?{id:d.id||uid('d'),base:d.base,scenarios:d.scenarios||[],active:'base'}:{id:uid('d'),base:d,scenarios:[],active:'base'};DEF_PENDING=d.defaults&&!sameDef(d.defaults,DEF)?d.defaults:null;METHOD=null;STAGE_SEL=null;CALF_ST={};bindActive();calfCache.clear();save();VIEW='project';render();toast('Project loaded')}catch(e){toast('That is not a project file')}}
 function receptorsCSV(){const s0=P.sites[0].id;return['name,type,distance,direction',...P.receptors.map(r=>[`"${r.name.replace(/"/g,'""')}"`,r.cls,distOf(r,s0,P.stages.at(-1).id)??'',dirOf(r,s0,P.stages.at(-1).id)!=null?DIRS[dirOf(r,s0,P.stages.at(-1).id)]:''].join(','))].join('\n')}
 function importCSV(text){const rows=parseCSV(text);let start=/name/i.test(rows[0]?.[0]||'')?1:0;let n=0;const s0=P.sites[0].id;
   for(const r of rows.slice(start)){const[name,type,dist,dir]=r.map(c=>c.trim());if(!name)continue;const t=(type||'').toLowerCase();
@@ -886,15 +933,17 @@ function coerce(t,v){if(t==='num')return v===''?'':(isFinite(+v)?+v:v);if(t==='n
 function afterChange(full){save();if(full)render();else renderLive()}
 document.addEventListener('input',e=>{const el=e.target;
   if(el.dataset.ls){try{localStorage.setItem(el.dataset.ls,el.value.trim())}catch(_){}return}
+  if(el.dataset.def){const v=el.value.trim();if(v===''||!isFinite(+v))return;setPath(DEF,el.dataset.def,+v);saveDef();save();renderLive();return}
   if(el.dataset.k){if(el.dataset.k==='__scenname'){const s=DOC.scenarios.find(s=>s.id===DOC.active);if(s)s.name=el.value;save();return}
-    setPath(P,el.dataset.k,coerce(el.dataset.t,el.value));if(P.example){P.example=false;if(/^Example data to show how the tool works/.test(P.project.notes||''))P.project.notes='';render();save();return}calfCache.clear();afterChange(false);return}
+    setPath(P,el.dataset.k,coerce(el.dataset.t,el.value));calfCache.clear();afterChange(false);return}
   if(el.dataset.alloc!=null){const g=P.groups[+el.dataset.alloc];g.alloc=g.alloc||[];const fid=el.dataset.fid;const a=g.alloc.find(a=>a.fid===fid);const v=+el.value||0;if(a)a.hrs=v;else g.alloc.push({fid,hrs:v});afterChange(false);return}
   if(el.dataset.wm){WIND_IMPORT[el.dataset.wm]=el.dataset.wm==='offset'?el.value:+el.value}});
-document.addEventListener('change',e=>{const el=e.target;if(el.dataset.ls){render();return}if(el.dataset.k||el.dataset.alloc!=null){render()}if(el.dataset.wm&&el.dataset.wm!=='offset'){WIND_IMPORT[el.dataset.wm]=+el.value}});
+document.addEventListener('change',e=>{const el=e.target;if(el.dataset.ls||el.dataset.def){render();return}if(el.dataset.k||el.dataset.alloc!=null){render()}if(el.dataset.wm&&el.dataset.wm!=='offset'){WIND_IMPORT[el.dataset.wm]=+el.value}});
 document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;
   if(b.dataset.view){VIEW=b.dataset.view;CONFIRM=null;render();window.scrollTo(0,0);return}
-  if(b.dataset.step){const k=b.dataset.step;const cur=+getPath(P,k)||0;setPath(P,k,Math.max(0,Math.round((cur+(+b.dataset.d))*100)/100));calfCache.clear();save();const inp=document.querySelector(`[data-k="${k}"]`);if(inp)inp.value=getPath(P,k);if(k.includes('calc')||k.startsWith('own')||k.startsWith('project.fixed'))render();else renderLive();return}
-  if(b.dataset.chip){const k=b.dataset.chip;let v=b.dataset.v;if(P.example&&!k.startsWith('__')){P.example=false;if(/^Example data to show how the tool works/.test(P.project.notes||''))P.project.notes=''}
+  if(b.dataset.step){const k=b.dataset.step;const cur=+getPath(P,k)||0;setPath(P,k,Math.max(0,Math.round((cur+(+b.dataset.d))*100)/100));calfCache.clear();save();const inp=document.querySelector(`[data-k="${k}"]`);if(inp)inp.value=getPath(P,k);if(k.includes('.calf.')||k.startsWith('project.fixed'))render();else renderLive();return}
+  if(b.dataset.chip){const k=b.dataset.chip;let v=b.dataset.v;
+    if(k.startsWith('__def.')){setPath(DEF,k.slice(6),v);saveDef();METHOD=null;save();render();return}if(k==='__defst'){DEF_STATE=v;render();return}if(k.startsWith('__calfst.')){CALF_ST[k.slice(9)]=v;render();return}
     if(k==='__method'){METHOD=v;render();return}if(k==='__mt'){MAP_TARGET=MAP_TARGET===v?null:v;DRAW=null;render();return}if(k==='__gi'){GEO_IMPORT.mode=v;render();return}if(k==='__gz'){GEO_IMPORT.zone=v;render();return}if(k==='__stage'){STAGE_SEL=v;render();return}
     if(k==='__scen'){DOC.active=v;bindActive();save();render();return}
     if(k.startsWith('__wm.')){WIND_IMPORT[k.slice(5)]=v;render();return}
@@ -904,15 +953,20 @@ document.addEventListener('click',async e=>{const b=e.target.closest('button');i
     calfCache.clear();save();render();return}
   const act=b.dataset.act;if(!act)return;const id=b.dataset.id;const s0=P.sites[0].id;
   const A={
-    addStage(){const n=P.stages.length+1;const id=uid('s');P.stages.push({id,name:'Stage '+n});P.groups.forEach(g=>{g.heads=g.heads||{};const prev=P.stages.at(-2);g.heads[id]=g.heads[prev.id]||0})},
-    addStage0(){const id=uid('s');const first=P.stages[0];P.stages.unshift({id,name:'Stage 0 — existing operation'});P.groups.forEach(g=>{g.heads=g.heads||{};g.heads[id]=g.calc?0:(g.heads[first.id]||0)});toast('Stage 0 added — set "Built in" to Stage 0 for facilities that already exist')},
+    addStage(){const n=P.stages.length+1;const id=uid('s');P.stages.push({id,name:'Stage '+n});const prev=P.stages.at(-2);P.groups.forEach(g=>{g.heads=g.heads||{};g.heads[id]=g.heads[prev.id]||0;if(g.calf&&g.calf.plan[prev.id])g.calf.plan[id]=clone(g.calf.plan[prev.id])})},
+    addStage0(){const id=uid('s');const first=P.stages[0];P.stages.unshift({id,name:'Stage 0 — existing operation'});P.groups.forEach(g=>{g.heads=g.heads||{};g.heads[id]=g.calf?0:(g.heads[first.id]||0)});toast('Stage 0 added — set "Built in" to Stage 0 for facilities that already exist')},
     delStage(){P.stages=P.stages.filter(s=>s.id!==id);P.facilities.forEach(f=>{if(f.built===id)f.built=P.stages[0].id;if(f.retired===id)f.retired=''})},
     addSite(){const sid=uid('S');P.sites.push({id:sid,name:'Site '+(P.sites.length+1),hasPond:false});P.own[sid]={}},
     delSite(){if(P.sites.length<2)return;P.sites=P.sites.filter(s=>s.id!==id);P.facilities.forEach(f=>{if(f.site===id)f.site=P.sites[0].id})},
     addFac(){P.facilities.push({id:uid('f'),name:'New facility',kind:'barn',site:s0,built:P.stages[0].id,retired:'',vicType:'shed_bed',area:0,w02Pad:'Enclosed',w02Clean:'Scraped Weekly'})},
     delFac(){P.facilities=P.facilities.filter(f=>f.id!==id);P.groups.forEach(g=>g.alloc=(g.alloc||[]).filter(a=>a.fid!==id))},
     addGroup(){P.groups.push({id:uid('g'),name:'Herd group',lw:600,lact:true,grazing:false,heads:Object.fromEntries(P.stages.map(s=>[s.id,0])),alloc:[],calc:null})},
-    addCalf(){P.groups.push({id:uid('g'),name:'Calves 0–3 months',lw:75,lact:false,grazing:false,heads:Object.fromEntries(P.stages.map(s=>[s.id,0])),alloc:[],calc:{blocks:3,blockWeeks:6,intervalDays:122,reared:50,daysIn:91,birthKg:40,exitKg:110}})},
+    addCalf(){P.groups.push({id:uid('g'),name:'Calves 0–3 months',lw:75,lact:false,grazing:false,heads:Object.fromEntries(P.stages.map(s=>[s.id,0])),alloc:[],calf:{birthKg:40,exitKg:110,plan:{}}})},
+    useCalfPeak(){const g=P.groups.find(x=>x.id===id);const sid=b.dataset.sid;if(!g||!g.calf)return;const pl=g.calf.plan[sid];if(!pl)return;g.heads[sid]=Math.round(calfSim(pl).peakHead);toast(`${fmt(g.heads[sid])} calves set for ${(P.stages.find(x=>x.id===sid)||{}).name}`)},
+    useProjDef(){DEF=mergeDef(DEF_PUBLISHED,DEF_PENDING);DEF_PENDING=null;saveDef();METHOD=null},keepDef(){DEF_PENDING=null},
+    saveDef(){download('sfactor-defaults.json',JSON.stringify(DEF,null,1),'application/json');return 'async'},
+    resetDef(){DEF=clone(DEF_PUBLISHED);saveDef();METHOD=null;toast('Defaults reset to published values')},
+    loadDef(){const f=$('#deffile')?.files?.[0];if(!f){toast('Choose a defaults file');return 'async'}const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);DEF=mergeDef(DEF_PUBLISHED,d.defaults||d);saveDef();METHOD=null;save();render();toast('Defaults loaded')}catch(e){toast('That is not a defaults file')}};rd.readAsText(f);return 'async'},
     delGroup(){P.groups=P.groups.filter(g=>g.id!==id)},
     addRec(){P.receptors.push({id:uid('r'),name:'New receptor',kind:'sens',cls:'dwelling',dist:{},dir:{},terrain:'flat',veg:'crops',same:false,ovr:{},notes:''})},
     addFeat(){P.receptors.push({id:uid('r'),name:'Waterway',kind:'feat',cls:'waterway',dist:{},dir:{},terrain:'flat',veg:'crops',same:false,ovr:{},notes:''})},
@@ -934,9 +988,8 @@ document.addEventListener('click',async e=>{const b=e.target.closest('button');i
     loadPaste(){const t=$('#loadpaste')?.value;if(t)loadDoc(t);return 'async'},
     copyCSV(){copy(receptorsCSV(),'Receptors CSV copied');return 'async'},saveCSV(){download('receptors.csv',receptorsCSV(),'text/csv');return 'async'},
     importCSV(){const t=$('#csvpaste')?.value;if(t)importCSV(t);return 'async'},
-    askBlank(){CONFIRM='blank'},askExample(){CONFIRM='example'},
-    doBlank(){FILE_HANDLE=null;DOC={base:blankProject(),scenarios:[],active:'base'};bindActive();CONFIRM=null;VIEW='project'},
-    doExample(){FILE_HANDLE=null;DOC={base:exampleProject(),scenarios:[],active:'base'};bindActive();CONFIRM=null;VIEW='project'},
+    askBlank(){CONFIRM='blank'},
+    doBlank(){FILE_HANDLE=null;PENDING_HANDLE=null;LAST_AUTO=null;AUTO_ERR=null;DOC={id:uid('d'),base:blankProject(),scenarios:[],active:'base'};bindActive();CONFIRM=null;VIEW='project';METHOD=null;STAGE_SEL=null;MAP_TARGET=null;DRAW=null;PIN_EDIT=null;CALF_ST={};toast('New project started')},
     print(){try{window.print()}catch(_){}return 'async'},
     finishShape(){if(!DRAW||DRAW.pts.length<3){toast('Tap at least 3 corners first');return 'async'}setTarget(MAP_TARGET,DRAW.pts);DRAW=null;P.receptors.forEach(r=>{if(r.ll)syncPin(r)});if(MAP_TARGET==='parcel')toast('Parcel added')},
     undoPt(){if(DRAW&&DRAW.pts.length){DRAW.pts.pop();drawTemp();refreshMap()}return 'async'},cancelDraw(){DRAW=null},

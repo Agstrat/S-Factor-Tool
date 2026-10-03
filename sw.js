@@ -1,5 +1,5 @@
 /* Dairy S-Factor Tool — offline app shell. VERSION changes every build → clean update. */
-const VERSION = 'sf-6e00de22';
+const VERSION = 'sf-c71836d2';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-32.png',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'];
 const RUNTIME = 'sf-runtime';
